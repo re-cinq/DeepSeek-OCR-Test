@@ -275,6 +275,7 @@ class QwenVisionService:
             temperature=0.1,  # Low temp for focused, deterministic responses
             top_p=0.9,
             max_tokens=1024,  # Balanced: concise but complete answers
+            repetition_penalty=1.05,  # Prevent repetitive output
             skip_special_tokens=True,
         )
 
