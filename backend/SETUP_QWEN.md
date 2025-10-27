@@ -1,6 +1,15 @@
 # Qwen3-VL Setup für re:cinq Technical Drawing Chat
 
-## Option 1: AsyncLLMEngine direkt (Aktuell implementiert)
+## ⚡ Empfohlenes Model: Qwen3-VL-30B-A3B-Instruct
+
+**Optimal für Production!**
+- **30B Parameter** (MoE mit nur 3B aktiven Parametern)
+- **Läuft auf 1-2 GPUs** statt 8!
+- **~15-20GB VRAM** statt 100GB+
+- **Sehr schnell** durch MoE-Architektur
+- **Exzellente Qualität** für technische Zeichnungen
+
+## Option 1: AsyncLLMEngine direkt (✅ Aktuell implementiert)
 
 Das Backend nutzt `AsyncLLMEngine` direkt ohne separaten vLLM Server.
 
@@ -17,13 +26,12 @@ pip install qwen-vl-utils==0.0.14
 ### Model Download:
 
 Das Model wird automatisch beim ersten Start heruntergeladen:
-- Model: `Qwen/Qwen3-VL-235B-A22B-Instruct`
-- Größe: ~235B Parameter (MoE mit 22B aktiven Parametern)
-- Speicher: ~100GB+ (je nach Quantisierung)
+- Model: `Qwen/Qwen3-VL-30B-A3B-Instruct` ✅ **AKTUELL**
+- Größe: ~30B Parameter (MoE mit 3B aktiven Parametern)
+- Download: ~20GB
+- VRAM: ~15-20GB (1 GPU)
 
-Alternativ FP8-quantisierte Version (schneller, weniger Speicher):
-- Model: `Qwen/Qwen3-VL-235B-A22B-Instruct-FP8`
-- Speicher: ~50-60GB
+Für mehr Performance nutze 2 GPUs mit tensor_parallel_size=2
 
 ### Backend starten:
 
@@ -36,9 +44,9 @@ Das Backend initialisiert beim Start automatisch den `QwenVisionService` mit `As
 
 ### GPU-Anforderungen:
 
-Für Qwen3-VL-235B-A22B:
-- **8x A100/H100** (tensor_parallel_size=8 in qwen_vision_service.py)
-- Oder weniger GPUs mit FP8-Quantisierung
+Für Qwen3-VL-30B-A3B-Instruct ✅:
+- **1x GPU** mit ≥20GB VRAM (A6000, A100, H100, RTX 4090)
+- **2x GPUs** für bessere Performance (tensor_parallel_size=2)
 
 Zum Anpassen der GPU-Anzahl, editiere `backend/qwen_vision_service.py`:
 
@@ -46,7 +54,7 @@ Zum Anpassen der GPU-Anzahl, editiere `backend/qwen_vision_service.py`:
 engine_args = AsyncEngineArgs(
     model=self.model_path,
     trust_remote_code=True,
-    tensor_parallel_size=4,  # ← Hier anpassen
+    tensor_parallel_size=1,  # ← 1 oder 2 GPUs
     gpu_memory_utilization=0.90,
     ...
 )
@@ -61,22 +69,20 @@ Falls du einen separaten vLLM Server bevorzugst:
 ### Server starten:
 
 ```bash
-# Standard Version
+# Qwen3-VL-30B auf 1 GPU
 python3 -m vllm.entrypoints.openai.api_server \
-    --model Qwen/Qwen3-VL-235B-A22B-Instruct \
-    --tensor-parallel-size 8 \
+    --model Qwen/Qwen3-VL-30B-A3B-Instruct \
+    --tensor-parallel-size 1 \
     --max-model-len 8192 \
     --trust-remote-code \
     --gpu-memory-utilization 0.90 \
     --port 8001 \
     --host 0.0.0.0
 
-# FP8 Version (empfohlen für weniger GPUs)
+# Oder mit 2 GPUs für bessere Performance
 python3 -m vllm.entrypoints.openai.api_server \
-    --model Qwen/Qwen3-VL-235B-A22B-Instruct-FP8 \
-    --tensor-parallel-size 8 \
-    --mm-encoder-tp-mode data \
-    --enable-expert-parallel \
+    --model Qwen/Qwen3-VL-30B-A3B-Instruct \
+    --tensor-parallel-size 2 \
     --max-model-len 8192 \
     --trust-remote-code \
     --gpu-memory-utilization 0.90 \
@@ -90,19 +96,21 @@ python3 -m vllm.entrypoints.openai.api_server \
 
 ## Model-Vergleich:
 
-| Model | Parameters | Active Params | Memory | Speed | Quality |
-|-------|-----------|---------------|--------|-------|---------|
-| Qwen3-VL-235B-A22B | 235B (MoE) | 22B | ~100GB | Medium | Excellent |
-| Qwen3-VL-235B-FP8 | 235B (MoE) | 22B | ~50GB | Fast | Excellent |
-| Qwen3-VL-72B | 72B | 72B | ~144GB | Slow | Great |
-| Qwen3-VL-7B | 7B | 7B | ~14GB | Very Fast | Good |
+| Model | Parameters | Active Params | Memory | GPUs | Speed | Quality |
+|-------|-----------|---------------|--------|------|-------|---------|
+| **Qwen3-VL-30B-A3B** ✅ | 30B (MoE) | 3B | **~15-20GB** | **1-2** | **Sehr schnell** | **Excellent** |
+| Qwen3-VL-235B-A22B | 235B (MoE) | 22B | ~100GB | 8 | Medium | Excellent |
+| Qwen3-VL-7B | 7B | 7B | ~14GB | 1 | Sehr schnell | Good |
+| Qwen3-VL-72B | 72B | 72B | ~144GB | 4+ | Langsam | Great |
 
-### Empfehlung:
+### ✅ Empfehlung: Qwen3-VL-30B-A3B-Instruct
 
-Für Production mit 8x GPUs: **Qwen3-VL-235B-A22B-Instruct-FP8**
-- Beste Balance aus Qualität und Performance
-- Passt auf 8x A100 80GB oder 4x H100
-- `--enable-expert-parallel` nutzt MoE optimal
+**Warum dieses Model?**
+- **Optimal für 1-2 GPUs**: Passt auf Standard-Hardware
+- **MoE-Architektur**: Nur 3B aktive Parameter = sehr schnell
+- **Excellent Quality**: Comparable zu viel größeren Models
+- **Production-ready**: Stabil und effizient
+- **Kostengünstig**: Weniger GPUs = weniger Kosten
 
 ---
 
@@ -111,11 +119,11 @@ Für Production mit 8x GPUs: **Qwen3-VL-235B-A22B-Instruct-FP8**
 In `backend/qwen_vision_service.py`:
 
 ```python
-def __init__(self, model_path: str = "Qwen/Qwen3-VL-235B-A22B-Instruct-FP8"):
-    # Wechsel zum FP8 Model
+def __init__(self, model_path: str = "Qwen/Qwen3-VL-30B-A3B-Instruct"):
+    # ✅ Aktuell: 30B Model (optimal!)
     self.model_path = model_path
 
-    # Oder kleineres Model für Testing:
+    # Oder für Testing auf kleinerer Hardware:
     # self.model_path = "Qwen/Qwen3-VL-7B-Instruct"
 ```
 
@@ -125,7 +133,7 @@ Und GPU-Settings:
 engine_args = AsyncEngineArgs(
     model=self.model_path,
     trust_remote_code=True,
-    tensor_parallel_size=4,  # ← Deine GPU-Anzahl
+    tensor_parallel_size=1,  # ← 1 GPU (oder 2 für mehr Performance)
     gpu_memory_utilization=0.90,
     max_model_len=8192,
     enforce_eager=False,
@@ -137,29 +145,36 @@ engine_args = AsyncEngineArgs(
 ## Troubleshooting:
 
 ### OOM (Out of Memory):
-1. Nutze FP8-Model: `Qwen3-VL-235B-A22B-Instruct-FP8`
-2. Reduziere `gpu_memory_utilization` auf 0.85
-3. Reduziere `max_model_len` auf 4096
-4. Nutze kleineres Model: `Qwen3-VL-7B-Instruct`
+Mit Qwen3-VL-30B sollte das selten passieren, aber falls doch:
+1. Reduziere `gpu_memory_utilization` auf 0.85
+2. Reduziere `max_model_len` auf 4096
+3. Nutze kleineres Model: `Qwen3-VL-7B-Instruct`
 
 ### Langsame Inferenz:
-1. Nutze FP8-Model
-2. Erhöhe `tensor_parallel_size`
-3. Aktiviere `--enable-expert-parallel` (nur bei MoE Models)
-4. Setze `enforce_eager=False` (nutzt CUDAGraph)
+1. Nutze 2 GPUs mit `tensor_parallel_size=2`
+2. Setze `enforce_eager=False` (nutzt CUDAGraph für Speed)
+3. Erhöhe `gpu_memory_utilization` auf 0.95 (mehr Cache)
 
 ### Model Download langsam:
 ```bash
-# Vorher downloaden mit huggingface-cli
-huggingface-cli download Qwen/Qwen3-VL-235B-A22B-Instruct-FP8
+# Vorher downloaden mit huggingface-cli (~20GB)
+huggingface-cli download Qwen/Qwen3-VL-30B-A3B-Instruct
 ```
 
 ---
 
-## Aktuelle Konfiguration:
+## ✅ Aktuelle Konfiguration:
 
-Das Backend ist aktuell für **8x GPUs** mit dem **Full Precision Model** konfiguriert.
+Das Backend ist für **1 GPU** mit **Qwen3-VL-30B-A3B-Instruct** konfiguriert.
 
-Zum Testen auf weniger Hardware, editiere `qwen_vision_service.py` und nutze:
-- `Qwen3-VL-7B-Instruct` (1 GPU, ~14GB)
-- `tensor_parallel_size=1`
+**Hardware-Anforderungen:**
+- 1x GPU mit ≥20GB VRAM (A6000, A100, H100, RTX 4090, RTX 6000 Ada)
+- Oder 2x GPUs für bessere Performance
+
+**Zum Starten:**
+```bash
+cd backend
+python main.py
+```
+
+Das Model wird beim ersten Start automatisch heruntergeladen (~20GB).

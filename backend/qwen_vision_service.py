@@ -27,7 +27,7 @@ from models import (
 class QwenVisionService:
     """Service class for Qwen3-VL Vision operations"""
 
-    def __init__(self, model_path: str = "Qwen/Qwen3-VL-235B-A22B-Instruct"):
+    def __init__(self, model_path: str = "Qwen/Qwen3-VL-30B-A3B-Instruct"):
         """Initialize the Vision service with vLLM model"""
         self.model = None
         self.model_path = model_path
@@ -56,7 +56,7 @@ Always provide precise, structured answers. When asked about specific measuremen
         engine_args = AsyncEngineArgs(
             model=self.model_path,
             trust_remote_code=True,
-            tensor_parallel_size=8,  # Adjust based on your GPU setup
+            tensor_parallel_size=1,  # 30B model runs on 1-2 GPUs
             gpu_memory_utilization=0.90,
             max_model_len=8192,
             enforce_eager=False,
