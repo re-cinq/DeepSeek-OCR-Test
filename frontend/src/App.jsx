@@ -1,7 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import ImageUpload from './components/ImageUpload';
-import ModeSelector from './components/ModeSelector';
-import ResultsDisplay from './components/ResultsDisplay';
 import BoundingBoxOverlay from './components/BoundingBoxOverlay';
 import ConversationalMode from './components/ConversationalMode';
 
@@ -9,63 +7,23 @@ import ConversationalMode from './components/ConversationalMode';
 const API_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
 
 function App() {
-  const [interfaceMode, setInterfaceMode] = useState('structured'); // 'structured' or 'conversational'
-  const [selectedMode, setSelectedMode] = useState('technical_drawing');
   const [uploadedImage, setUploadedImage] = useState(null);
-  const [uploadedFile, setUploadedFile] = useState(null); // Store file for conversational mode
+  const [uploadedFile, setUploadedFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState(null);
-  const [error, setError] = useState(null);
   const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
 
-  const handleImageUpload = async (file) => {
+  const handleImageUpload = (file) => {
     // Store the file for conversational mode
     setUploadedFile(file);
 
-    // For images, create object URL for preview. For PDFs, set null (will show message)
+    // For images, create object URL for preview
     if (file.type.startsWith('image/')) {
       setUploadedImage(URL.createObjectURL(file));
     } else if (file.type === 'application/pdf') {
       setUploadedImage('PDF');  // Special marker for PDF files
     }
     setResults(null);
-    setError(null);
-
-    // Only auto-process in structured mode
-    if (interfaceMode === 'structured') {
-      setIsProcessing(true);
-    } else {
-      // In conversational mode, just upload without processing
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('mode', selectedMode);
-      formData.append('grounding', 'true');
-      formData.append('extract_dimensions', 'true');
-      formData.append('extract_part_numbers', 'true');
-      formData.append('extract_tables', 'true');
-
-      const response = await fetch(`${API_URL}/api/ocr`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'OCR processing failed');
-      }
-
-      const data = await response.json();
-      setResults(data);
-    } catch (err) {
-      setError(err.message);
-      console.error('Error processing image:', err);
-    } finally {
-      setIsProcessing(false);
-    }
   };
 
   return (
@@ -74,50 +32,15 @@ function App() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold text-white mb-2">
-            re:cinq - OCR Platform
+            💬 re:cinq - Technical Drawing Chat
           </h1>
           <p className="text-blue-200 text-lg">
-            Technical Drawing Analysis & OCR
+            Ask questions about your technical drawings in natural language
           </p>
           <p className="text-blue-300 text-sm mt-1">
-            Powered by DeepSeek-VL with vLLM
+            Powered by DeepSeek-OCR with vLLM
           </p>
         </div>
-
-        {/* Interface Mode Toggle */}
-        <div className="mb-6 flex justify-center gap-2">
-          <button
-            onClick={() => setInterfaceMode('structured')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-              interfaceMode === 'structured'
-                ? 'bg-blue-500 text-white shadow-lg'
-                : 'bg-white/10 text-blue-200 hover:bg-white/20'
-            }`}
-          >
-            📊 Structured OCR
-          </button>
-          <button
-            onClick={() => setInterfaceMode('conversational')}
-            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-              interfaceMode === 'conversational'
-                ? 'bg-blue-500 text-white shadow-lg'
-                : 'bg-white/10 text-blue-200 hover:bg-white/20'
-            }`}
-          >
-            💬 Conversational
-          </button>
-        </div>
-
-        {/* Mode Selector - Only show in structured mode */}
-        {interfaceMode === 'structured' && (
-          <div className="mb-6">
-            <ModeSelector
-              selectedMode={selectedMode}
-              onModeChange={setSelectedMode}
-              disabled={isProcessing}
-            />
-          </div>
-        )}
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -176,39 +99,17 @@ function App() {
               </div>
             )}
 
-            {isProcessing && (
-              <div className="bg-blue-500/20 border border-blue-400 rounded-lg p-4 text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-2"></div>
-                <p className="text-white">Processing technical drawing...</p>
-              </div>
-            )}
-
-            {error && (
-              <div className="bg-red-500/20 border border-red-400 rounded-lg p-4">
-                <p className="text-red-200 font-semibold">Error:</p>
-                <p className="text-red-100">{error}</p>
-              </div>
-            )}
           </div>
 
-          {/* Right Column - Results or Conversational */}
+          {/* Right Column - Conversational Mode */}
           <div>
-            {interfaceMode === 'conversational' ? (
-              <ConversationalMode
-                imageFile={uploadedFile}
-                onResults={setResults}
-                isProcessing={isProcessing}
-                setIsProcessing={setIsProcessing}
-                apiUrl={API_URL}
-              />
-            ) : (
-              results && (
-                <ResultsDisplay
-                  results={results}
-                  mode={selectedMode}
-                />
-              )
-            )}
+            <ConversationalMode
+              imageFile={uploadedFile}
+              onResults={setResults}
+              isProcessing={isProcessing}
+              setIsProcessing={setIsProcessing}
+              apiUrl={API_URL}
+            />
           </div>
         </div>
       </div>
