@@ -55,18 +55,36 @@ Always provide precise, structured answers. When asked about specific measuremen
         """Initialize vLLM AsyncLLMEngine for Qwen3-VL"""
         print(f"Initializing Qwen3-VL model: {self.model_path}")
 
-        # Initialize AsyncLLMEngine
-        engine_args = AsyncEngineArgs(
-            model=self.model_path,
-            trust_remote_code=True,
-            tensor_parallel_size=1,  # 8B model runs on 1 GPU
-            gpu_memory_utilization=0.90,
-            max_model_len=8192,
-            enforce_eager=True,  # Disable flash-attn to avoid ABI mismatch
-        )
-        self.model = AsyncLLMEngine.from_engine_args(engine_args)
+        # Try with flash-attn first for better performance
+        try:
+            print("Attempting to use flash-attn for optimal performance...")
+            engine_args = AsyncEngineArgs(
+                model=self.model_path,
+                trust_remote_code=True,
+                tensor_parallel_size=1,  # 8B model runs on 1 GPU
+                gpu_memory_utilization=0.90,
+                max_model_len=8192,
+                enforce_eager=False,  # Try with CUDA graphs and flash-attn
+            )
+            self.model = AsyncLLMEngine.from_engine_args(engine_args)
+            print("✓ Qwen3-VL AsyncLLMEngine initialized with flash-attn!")
 
-        print("Qwen3-VL AsyncLLMEngine initialized successfully!")
+        except Exception as e:
+            print(f"⚠️  flash-attn failed ({str(e)[:100]}), falling back to eager mode...")
+            print("Note: Performance will be ~20-30% slower without flash-attn")
+            print("Run ./fix_flash_attn.sh to fix flash-attn installation")
+
+            # Fallback to eager mode
+            engine_args = AsyncEngineArgs(
+                model=self.model_path,
+                trust_remote_code=True,
+                tensor_parallel_size=1,
+                gpu_memory_utilization=0.90,
+                max_model_len=8192,
+                enforce_eager=True,  # Disable flash-attn as fallback
+            )
+            self.model = AsyncLLMEngine.from_engine_args(engine_args)
+            print("✓ Qwen3-VL AsyncLLMEngine initialized in eager mode (slower)")
 
     def _initialize_processor(self):
         """Initialize the AutoProcessor for Qwen3-VL"""

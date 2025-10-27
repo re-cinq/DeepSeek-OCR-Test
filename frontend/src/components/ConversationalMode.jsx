@@ -48,25 +48,14 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
         setSessionId(data.session_id);
         setUploadStatus('ready');
 
-        // Pass detected elements to parent (for bounding box visualization)
-        if (data.detected_elements && data.detected_elements.length > 0) {
-          onResults({
-            detected_elements: data.detected_elements,
-            image_width: data.image_width,
-            image_height: data.image_height,
-            text: `Automatisch ${data.detected_elements.length} Elemente erkannt`,
-            markdown: ''
-          });
-        }
-
         // Add system message to chat
-        const elementsMsg = data.detected_elements && data.detected_elements.length > 0
-          ? ` (${data.detected_elements.length} Ansichten/Elemente erkannt)`
-          : '';
         setChatHistory([{
           type: 'system',
-          content: `✓ ${data.message}${elementsMsg}`
+          content: `✓ ${data.message} Ansichten werden im Hintergrund erkannt...`
         }]);
+
+        // Start polling for background detection results
+        pollDetectionStatus(data.session_id);
 
       } catch (error) {
         console.error('Error uploading image:', error);
@@ -82,6 +71,41 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
 
     uploadImage();
   }, [imageFile, apiUrl, setIsProcessing]);
+
+  // Poll for background detection results
+  const pollDetectionStatus = async (sid) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/detection-status/${sid}`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+
+      if (data.detection_status === 'completed' && data.detected_elements && data.detected_elements.length > 0) {
+        // Update with detected elements
+        onResults({
+          detected_elements: data.detected_elements,
+          image_width: data.image_width,
+          image_height: data.image_height,
+          text: `${data.elements_count} Elemente automatisch erkannt`,
+          markdown: ''
+        });
+
+        // Update chat message
+        setChatHistory(prev => {
+          const updated = [...prev];
+          if (updated.length > 0 && updated[0].type === 'system') {
+            updated[0].content = `✓ Bild erfolgreich hochgeladen (${data.elements_count} Ansichten/Elemente erkannt)`;
+          }
+          return updated;
+        });
+      } else if (data.detection_status === 'running' || data.detection_status === 'pending') {
+        // Poll again in 2 seconds
+        setTimeout(() => pollDetectionStatus(sid), 2000);
+      }
+    } catch (error) {
+      console.error('Error polling detection status:', error);
+    }
+  };
 
   const askQuestion = async (questionText) => {
     if (!sessionId || !questionText.trim() || isProcessing) return;

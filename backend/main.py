@@ -2,7 +2,7 @@
 FastAPI Backend for Qwen3-VL Technical Drawing Analysis
 Uses Qwen3-VL for superior reasoning and conversational QA
 """
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict
@@ -13,6 +13,7 @@ import shutil
 import tempfile
 import uuid
 from datetime import datetime, timedelta
+import asyncio
 
 from qwen_vision_service import QwenVisionService
 from models import TechnicalDrawingResponse
@@ -25,6 +26,43 @@ logger = logging.getLogger(__name__)
 # Format: {session_id: {"image_path": str, "uploaded_at": datetime, "metadata": dict}}
 image_sessions: Dict[str, Dict] = {}
 SESSION_EXPIRY_HOURS = 24
+
+# Background task storage
+background_tasks_status: Dict[str, Dict] = {}
+
+async def run_view_detection_background(session_id: str, image_path: str):
+    """Background task to run view detection after upload"""
+    try:
+        background_tasks_status[session_id] = {"status": "running", "started_at": datetime.now()}
+        logger.info(f"Starting background view detection for session {session_id}")
+
+        result = await vision_service.process_technical_drawing(
+            image_path=image_path,
+            mode="view_detection",
+            grounding=True
+        )
+
+        # Update session with detected elements
+        if session_id in image_sessions:
+            image_sessions[session_id]["detected_elements"] = result.detected_elements
+            image_sessions[session_id]["image_width"] = result.image_width
+            image_sessions[session_id]["image_height"] = result.image_height
+
+        background_tasks_status[session_id] = {
+            "status": "completed",
+            "completed_at": datetime.now(),
+            "elements_count": len(result.detected_elements)
+        }
+
+        logger.info(f"✓ Background view detection completed for {session_id}: {len(result.detected_elements)} elements")
+
+    except Exception as e:
+        logger.error(f"✗ Background view detection failed for {session_id}: {e}")
+        background_tasks_status[session_id] = {
+            "status": "failed",
+            "error": str(e),
+            "failed_at": datetime.now()
+        }
 
 def cleanup_expired_sessions():
     """Remove expired image sessions"""
@@ -100,11 +138,13 @@ async def health_check():
 
 @app.post("/api/upload")
 async def upload_image(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...)
 ):
     """
     Upload and store an image for conversational chat.
     Returns a session_id that can be used for subsequent queries.
+    View detection runs in background - use /api/detection-status to check progress.
     """
     if not vision_service:
         raise HTTPException(status_code=503, detail="Vision service not initialized")
@@ -151,43 +191,27 @@ async def upload_image(
         else:
             process_path = str(image_path)
 
-        # Run automatic view detection on upload
-        logger.info(f"Running automatic view detection for session {session_id}")
-        detected_elements = []
-        img_width = 0
-        img_height = 0
-        try:
-            view_detection_result = await vision_service.process_technical_drawing(
-                image_path=process_path,
-                mode="view_detection",
-                grounding=True
-            )
-            detected_elements = view_detection_result.detected_elements
-            img_width = view_detection_result.image_width
-            img_height = view_detection_result.image_height
-            logger.info(f"✓ Detected {len(detected_elements)} views/elements automatically")
-        except Exception as e:
-            logger.warning(f"Automatic view detection failed: {e}")
-
-        # Store session data with detected elements
+        # Store session data (without detected elements initially)
         image_sessions[session_id] = {
             "image_path": process_path,
             "original_filename": file.filename,
             "uploaded_at": datetime.now(),
             "content_type": file.content_type,
-            "detected_elements": detected_elements,  # Store for later reference
-            "image_width": img_width,
-            "image_height": img_height
+            "detected_elements": [],  # Will be populated by background task
+            "image_width": 0,
+            "image_height": 0
         }
+
+        # Schedule background view detection
+        background_tasks.add_task(run_view_detection_background, session_id, process_path)
+        logger.info(f"Scheduled background view detection for session {session_id}")
 
         return {
             "session_id": session_id,
             "filename": file.filename,
             "status": "ready",
-            "message": "Bild erfolgreich hochgeladen. Sie können nun Fragen stellen.",
-            "detected_elements": [elem.dict() for elem in detected_elements],  # Return elements to frontend
-            "image_width": img_width,
-            "image_height": img_height
+            "message": "Bild erfolgreich hochgeladen. Sie können sofort Fragen stellen.",
+            "detection_status": "processing"  # Indicates background processing
         }
 
     except Exception as e:
@@ -196,6 +220,38 @@ async def upload_image(
         if session_dir.exists():
             shutil.rmtree(session_dir)
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/detection-status/{session_id}")
+async def get_detection_status(session_id: str):
+    """
+    Check the status of background view detection for a session.
+    Returns detected elements if completed.
+    """
+    if session_id not in image_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session_data = image_sessions[session_id]
+    task_status = background_tasks_status.get(session_id, {"status": "pending"})
+
+    response = {
+        "session_id": session_id,
+        "detection_status": task_status.get("status", "pending"),
+        "detected_elements": [],
+        "image_width": session_data.get("image_width", 0),
+        "image_height": session_data.get("image_height", 0)
+    }
+
+    # If completed, return the detected elements
+    if task_status.get("status") == "completed":
+        detected_elements = session_data.get("detected_elements", [])
+        response["detected_elements"] = [elem.dict() for elem in detected_elements]
+        response["elements_count"] = len(detected_elements)
+
+    # If failed, include error
+    if task_status.get("status") == "failed":
+        response["error"] = task_status.get("error", "Unknown error")
+
+    return response
 
 @app.post("/api/chat")
 async def chat_with_image(
