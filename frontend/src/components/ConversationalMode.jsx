@@ -5,14 +5,14 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
   const [chatHistory, setChatHistory] = useState([]);
 
   const predefinedQuestions = [
-    "What is the outer diameter?",
-    "List all dimensions with tolerances",
-    "What material specifications are shown?",
-    "Extract all part numbers",
-    "What are the critical dimensions?",
-    "Describe the technical details",
-    "What is shown in the BOM table?",
-    "What is the scale of this drawing?",
+    "Was ist der Außendurchmesser?",
+    "Liste alle Maße mit Toleranzen auf",
+    "Welche Materialspezifikationen sind angegeben?",
+    "Extrahiere alle Teilenummern",
+    "Was sind die kritischen Maße?",
+    "Beschreibe die technischen Details",
+    "Was steht in der Stückliste?",
+    "Was ist der Maßstab dieser Zeichnung?",
   ];
 
   const askQuestion = async (questionText) => {
@@ -44,7 +44,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
       const data = await response.json();
 
       // Add AI response to chat
-      const answerText = data.markdown || data.text || 'No response';
+      const answerText = data.markdown || data.text || 'Keine Antwort';
       setChatHistory(prev => [...prev, {
         type: 'assistant',
         content: answerText,
@@ -59,7 +59,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
       console.error('Error asking question:', error);
       setChatHistory(prev => [...prev, {
         type: 'error',
-        content: `Error: ${error.message}`
+        content: `Fehler: ${error.message}`
       }]);
     } finally {
       setIsProcessing(false);
@@ -78,9 +78,9 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
         {chatHistory.length === 0 ? (
           <div className="text-center text-blue-200 py-8">
             <div className="text-4xl mb-3">💬</div>
-            <div className="text-lg font-semibold mb-2">Conversational OCR</div>
+            <div className="text-lg font-semibold mb-2">Konversationelle OCR</div>
             <div className="text-sm">
-              Ask questions about your technical drawing in natural language
+              Stellen Sie Fragen zu Ihrer technischen Zeichnung in natürlicher Sprache
             </div>
           </div>
         ) : (
@@ -93,17 +93,17 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
                   'bg-white/10 text-white'}
               `}>
                 {message.type === 'user' && (
-                  <div className="text-xs text-blue-100 mb-1">You asked:</div>
+                  <div className="text-xs text-blue-100 mb-1">Sie fragten:</div>
                 )}
                 {message.type === 'assistant' && (
                   <div className="text-xs text-blue-200 mb-1">
-                    AI Response ({message.processingTime?.toFixed(1)}s)
+                    KI-Antwort ({message.processingTime?.toFixed(1)}s)
                   </div>
                 )}
                 <div className="whitespace-pre-wrap text-sm">{message.content}</div>
                 {message.elements && message.elements.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-white/20 text-xs text-blue-200">
-                    Detected {message.elements.length} elements
+                    {message.elements.length} Elemente erkannt
                   </div>
                 )}
               </div>
@@ -115,7 +115,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
       {/* Quick Questions */}
       {chatHistory.length === 0 && (
         <div className="bg-white/5 backdrop-blur-md rounded-lg p-4">
-          <div className="text-blue-200 text-sm font-semibold mb-3">Quick Questions:</div>
+          <div className="text-blue-200 text-sm font-semibold mb-3">Schnellfragen:</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {predefinedQuestions.map((q, idx) => (
               <button
@@ -138,7 +138,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask a question about this drawing..."
+            placeholder="Stellen Sie eine Frage zu dieser Zeichnung..."
             disabled={!imageFile || isProcessing}
             className="flex-1 bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-blue-200 focus:outline-none focus:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
           />
@@ -147,11 +147,11 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
             disabled={!imageFile || !question.trim() || isProcessing}
             className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg transition-colors font-semibold"
           >
-            {isProcessing ? 'Processing...' : 'Ask'}
+            {isProcessing ? 'Verarbeite...' : 'Fragen'}
           </button>
         </div>
         <div className="text-xs text-blue-200 mt-2">
-          💡 Tip: Be specific! Ask about dimensions, materials, part numbers, tables, or any technical details.
+          💡 Tipp: Seien Sie spezifisch! Fragen Sie nach Maßen, Materialien, Teilenummern, Tabellen oder technischen Details.
         </div>
       </form>
 
@@ -161,7 +161,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
           onClick={() => setChatHistory([])}
           className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-200 px-4 py-2 rounded-lg transition-colors text-sm"
         >
-          Clear Chat History
+          Chat-Verlauf löschen
         </button>
       )}
     </div>

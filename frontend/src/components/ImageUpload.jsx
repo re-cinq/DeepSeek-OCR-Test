@@ -34,7 +34,7 @@ function ImageUpload({ onImageUpload, disabled }) {
       if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         onImageUpload(file);
       } else {
-        alert('Please upload an image or PDF file');
+        alert('Bitte laden Sie eine Bilddatei oder PDF hoch');
       }
     }
   };
@@ -94,15 +94,15 @@ function ImageUpload({ onImageUpload, disabled }) {
         </svg>
 
         <p className="text-white text-lg font-semibold mb-2">
-          {isDragging ? 'Drop your image here' : 'Upload Technical Drawing'}
+          {isDragging ? 'Bild hier ablegen' : 'Technische Zeichnung hochladen'}
         </p>
 
         <p className="text-blue-200 text-sm">
-          Drag and drop or click to select
+          Drag & Drop oder klicken zum Auswählen
         </p>
 
         <p className="text-blue-300 text-xs mt-2">
-          Supports: JPG, PNG, TIFF, PDF (CAD drawings, blueprints, engineering diagrams)
+          Unterstützt: JPG, PNG, TIFF, PDF (CAD-Zeichnungen, Baupläne, technische Diagramme)
         </p>
       </div>
     </div>
