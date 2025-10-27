@@ -34,8 +34,8 @@ class QwenVisionService:
         self.processor = None
         self.model_path = model_path
 
-        # Short, concise system prompt to avoid exceeding token limits
-        self.system_prompt = """You are a technical drawing analyst. Be extremely concise. Give direct answers only. For measurements: just state the value and unit (e.g., "90 mm"). No reasoning, no explanations."""
+        # Balanced system prompt - concise but informative
+        self.system_prompt = """You are a technical drawing expert. Answer questions concisely but include essential context. For dimensions, state the value and relevant details (location, view, tolerance if shown). For lists, use bullet points. Skip lengthy explanations."""
 
         self._initialize_model()
         self._initialize_processor()
@@ -348,9 +348,9 @@ class QwenVisionService:
 
         # Prepare sampling params
         sampling_params = SamplingParams(
-            temperature=0.0,  # Zero temp for most concise, deterministic responses
+            temperature=0.1,  # Low temp for focused, deterministic responses
             top_p=0.9,
-            max_tokens=512,  # Reduced from 4096 to encourage shorter answers
+            max_tokens=1024,  # Balanced: concise but complete answers
             skip_special_tokens=True,
         )
 
