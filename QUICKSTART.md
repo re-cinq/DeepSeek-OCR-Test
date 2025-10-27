@@ -33,10 +33,12 @@ Wait for: `Local: http://localhost:5173/`
 ### Step 3: Use the Application
 
 1. Open your browser to **http://localhost:5173**
-2. Choose an analysis mode (start with "Technical Drawing")
-3. Drag & drop a technical drawing or click to upload
-4. Wait ~3-10 seconds for processing
-5. View results with interactive bounding boxes!
+2. Drag & drop a technical drawing or click to upload
+3. Ask questions in natural language:
+   - "What is the outer diameter?"
+   - "List all dimensions"
+   - "What's in the BOM table?"
+4. View answers with interactive bounding boxes!
 
 ## 📁 Project Structure
 
@@ -69,12 +71,12 @@ DeepSeek-OCR/
 
 ## 🎯 Features
 
-### For Technical Drawings:
-- **Dimension Extraction**: Finds measurements like "50mm", "Ø25", "R10"
-- **Part Numbers**: Detects "P/N: ABC-123", item numbers, callouts
-- **BOM Tables**: Extracts bills of materials with structure
+### Conversational OCR:
+- **Natural Language Questions**: Ask anything about your drawings
 - **Visual Grounding**: Colored bounding boxes on detected elements
-- **5 Analysis Modes**: Technical, Dimensions, Parts, BOM, Plain OCR
+- **Chat History**: Track Q&A across multiple questions
+- **Smart Responses**: Context-aware answers specific to your question
+- **Quick Questions**: Pre-defined prompts for common queries
 
 ### Technical Highlights:
 - Uses your **existing vLLM 0.8.5** installation (no reinstall!)
@@ -85,15 +87,18 @@ DeepSeek-OCR/
 
 ## 📊 Example API Usage
 
-### cURL
+### Ask Questions via API
+
+**cURL:**
 ```bash
 curl -X POST http://localhost:8000/api/ocr \
   -F "file=@technical_drawing.jpg" \
-  -F "mode=technical_drawing" \
+  -F "mode=custom" \
+  -F "custom_prompt=<image>\nWhat is the outer diameter?" \
   -F "grounding=true"
 ```
 
-### Python
+**Python:**
 ```python
 import requests
 
@@ -101,19 +106,24 @@ with open('drawing.jpg', 'rb') as f:
     response = requests.post(
         'http://localhost:8000/api/ocr',
         files={'file': f},
-        data={'mode': 'technical_drawing'}
+        data={
+            'mode': 'custom',
+            'custom_prompt': '<image>\nWhat is the outer diameter?',
+            'grounding': 'true'
+        }
     )
 
 results = response.json()
-print(f"Found {len(results['dimensions'])} dimensions")
-print(f"Found {len(results['part_numbers'])} part numbers")
+print(f"Answer: {results['text']}")
+print(f"Found {len(results['detected_elements'])} elements")
 ```
 
-### JavaScript
+**JavaScript:**
 ```javascript
 const formData = new FormData();
 formData.append('file', fileInput.files[0]);
-formData.append('mode', 'dimensions_only');
+formData.append('mode', 'custom');
+formData.append('custom_prompt', '<image>\nList all dimensions with tolerances');
 
 const response = await fetch('http://localhost:8000/api/ocr', {
   method: 'POST',
@@ -121,7 +131,7 @@ const response = await fetch('http://localhost:8000/api/ocr', {
 });
 
 const results = await response.json();
-console.log('Dimensions:', results.dimensions);
+console.log('Answer:', results.text);
 ```
 
 ## 🔧 Troubleshooting
@@ -165,9 +175,9 @@ self.model = LLM(
 
 ## 📚 Next Steps
 
-- Read [README_WEBAPP.md](README_WEBAPP.md) for full documentation
-- Try different analysis modes on your technical drawings
-- Adjust prompts in `backend/ocr_service.py` for custom analysis
+- Read [FEATURES.md](FEATURES.md) for complete feature list
+- Experiment with different types of questions
+- Try complex queries like "Compare dimensions in section A vs B"
 - Build production deployment (see README_WEBAPP.md)
 
 ## ⚡ Performance Tips
