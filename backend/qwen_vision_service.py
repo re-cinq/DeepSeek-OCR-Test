@@ -192,82 +192,6 @@ class QwenVisionService:
 
         return 'text'
 
-    def _strip_reasoning(self, text: str) -> str:
-        """
-        Strip internal reasoning from Qwen3-VL-8B-Thinking model output.
-        The Thinking model outputs reasoning followed by final answer.
-
-        Common patterns:
-        - "Got it, let's look at..." followed by answer
-        - Long reasoning paragraphs followed by structured answer
-        - Multiple reasoning steps before final conclusion
-        """
-        if not text:
-            return text
-
-        # Split by common section markers
-        lines = text.split('\n')
-
-        # Strategy 1: Look for markdown headers or structured sections
-        # Often the final answer starts with a header or structured format
-        answer_start = -1
-        for i, line in enumerate(lines):
-            # Check for markdown headers (## or **bold**)
-            if line.strip().startswith('##') or line.strip().startswith('**'):
-                answer_start = i
-                break
-            # Check for numbered lists at start of line (structured answers)
-            if re.match(r'^\d+\.', line.strip()) and i > 5:
-                answer_start = i
-                break
-            # Check for bullet points
-            if line.strip().startswith('- ') and i > 5:
-                answer_start = i
-                break
-
-        if answer_start > 0:
-            return '\n'.join(lines[answer_start:]).strip()
-
-        # Strategy 2: Look for common reasoning patterns to skip
-        reasoning_indicators = [
-            "Got it, let's",
-            "Let me check",
-            "Let me look",
-            "First, check",
-            "Looking at",
-            "Wait,",
-            "The user wants",
-            "The question is",
-        ]
-
-        # Find the last reasoning indicator
-        last_reasoning_idx = -1
-        for i, line in enumerate(lines):
-            if any(indicator in line for indicator in reasoning_indicators):
-                last_reasoning_idx = i
-
-        # If we found reasoning, skip past it
-        if last_reasoning_idx > 0 and last_reasoning_idx < len(lines) - 3:
-            # Look for the answer after the last reasoning
-            # Usually there's a blank line or structured text
-            for i in range(last_reasoning_idx + 1, len(lines)):
-                line = lines[i].strip()
-                if line and not any(indicator in line for indicator in reasoning_indicators):
-                    # This looks like the start of the answer
-                    return '\n'.join(lines[i:]).strip()
-
-        # Strategy 3: If text is very long (>500 chars), likely has reasoning
-        # Take the last significant section
-        if len(text) > 500:
-            # Split on double newlines (paragraph breaks)
-            paragraphs = text.split('\n\n')
-            if len(paragraphs) > 2:
-                # Return last 1-2 paragraphs (likely the answer)
-                return '\n\n'.join(paragraphs[-2:]).strip()
-
-        # If no reasoning detected, return original
-        return text
-
     async def process_technical_drawing(
         self,
         image_path: str,
@@ -372,13 +296,8 @@ class QwenVisionService:
             if request_output.outputs:
                 output_text = request_output.outputs[0].text
 
-        print(f"DEBUG: Qwen3-VL raw output length: {len(output_text)}")
+        print(f"DEBUG: Qwen3-VL output length: {len(output_text)}")
         print(f"DEBUG: First 500 chars: {output_text[:500]}")
-
-        # Strip reasoning from Qwen3-VL-8B-Thinking model
-        # The "Thinking" model outputs internal reasoning followed by final answer
-        cleaned_text = self._strip_reasoning(output_text)
-        print(f"DEBUG: After stripping reasoning: {len(cleaned_text)} chars")
 
         # Parse detections if grounding is enabled
         detected_elements = []
@@ -389,8 +308,8 @@ class QwenVisionService:
         processing_time = time.time() - start_time
 
         return TechnicalDrawingResponse(
-            text=cleaned_text,
-            markdown=cleaned_text,
+            text=output_text,
+            markdown=output_text,
             detected_elements=detected_elements,
             image_width=img_width,
             image_height=img_height,
