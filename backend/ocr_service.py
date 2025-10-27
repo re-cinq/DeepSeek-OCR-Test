@@ -336,12 +336,16 @@ class DeepSeekOCRService:
             # Debug: log the structure of image_data
             print(f"DEBUG: Prompt being used: {prompt[:100]}...")
             print(f"DEBUG: image_data type: {type(image_data)}")
-            print(f"DEBUG: image_data is list: {isinstance(image_data, list)}")
             if isinstance(image_data, list) and len(image_data) > 0:
-                print(f"DEBUG: image_data length: {len(image_data)}")
-                print(f"DEBUG: image_data[0] type: {type(image_data[0])}")
-                if isinstance(image_data[0], list):
-                    print(f"DEBUG: image_data[0] length: {len(image_data[0])}")
+                print(f"DEBUG: image_data[0] (should be list of 7): {type(image_data[0])}, len={len(image_data[0]) if isinstance(image_data[0], list) else 'N/A'}")
+                if isinstance(image_data[0], list) and len(image_data[0]) >= 7:
+                    # [input_ids, pixel_values, images_crop, images_seq_mask, images_spatial_crop, num_image_tokens, image_shapes]
+                    input_ids, pixel_values, images_crop, images_seq_mask, images_spatial_crop, num_image_tokens, image_shapes = image_data[0]
+                    print(f"DEBUG:   input_ids shape: {input_ids.shape if hasattr(input_ids, 'shape') else type(input_ids)}")
+                    print(f"DEBUG:   pixel_values shape: {pixel_values.shape if hasattr(pixel_values, 'shape') else type(pixel_values)}")
+                    print(f"DEBUG:   images_crop shape: {images_crop.shape if hasattr(images_crop, 'shape') else type(images_crop)}")
+                    print(f"DEBUG:   num_image_tokens: {num_image_tokens}")
+                    print(f"DEBUG:   image_shapes: {image_shapes}")
 
         finally:
             # Restore original prompt
