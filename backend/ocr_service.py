@@ -11,15 +11,25 @@ from typing import List, Optional, Dict, Any, Tuple
 from PIL import Image
 import torch
 
+# Set environment variables (required for vLLM)
+if torch.version.cuda == '11.8':
+    os.environ["TRITON_PTXAS_PATH"] = "/usr/local/cuda-11.8/bin/ptxas"
+os.environ['VLLM_USE_V1'] = '0'
+
 # Add DeepSeek-OCR vLLM directory to path
 DEEPSEEK_VLLM_DIR = Path(__file__).parent.parent / "DeepSeek-OCR-master" / "DeepSeek-OCR-vllm"
 sys.path.insert(0, str(DEEPSEEK_VLLM_DIR))
 
 from vllm import LLM, SamplingParams
 from vllm.sampling_params import GuidedDecodingParams
+from vllm.model_executor.models.registry import ModelRegistry
+from deepseek_ocr import DeepseekOCRForCausalLM
 from process.image_process import DeepseekOCRProcessor
 from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
 import config
+
+# Register the custom DeepSeek-OCR model with vLLM
+ModelRegistry.register_model("DeepseekOCRForCausalLM", DeepseekOCRForCausalLM)
 
 from models import (
     TechnicalDrawingResponse,
