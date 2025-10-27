@@ -332,6 +332,17 @@ class DeepSeekOCRService:
                 eos=True,
                 cropping=crop_mode
             )
+
+            # Debug: log the structure of image_data
+            print(f"DEBUG: Prompt being used: {prompt[:100]}...")
+            print(f"DEBUG: image_data type: {type(image_data)}")
+            print(f"DEBUG: image_data is list: {isinstance(image_data, list)}")
+            if isinstance(image_data, list) and len(image_data) > 0:
+                print(f"DEBUG: image_data length: {len(image_data)}")
+                print(f"DEBUG: image_data[0] type: {type(image_data[0])}")
+                if isinstance(image_data[0], list):
+                    print(f"DEBUG: image_data[0] length: {len(image_data[0])}")
+
         finally:
             # Restore original prompt
             config.PROMPT = original_prompt
