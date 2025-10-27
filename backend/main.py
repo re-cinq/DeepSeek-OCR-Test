@@ -105,8 +105,8 @@ async def process_technical_drawing(
         raise HTTPException(status_code=503, detail="OCR service not initialized")
 
     # Validate file type
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail=f"File must be an image (got {file.content_type})")
+    if not file.content_type or not (file.content_type.startswith("image/") or file.content_type == "application/pdf"):
+        raise HTTPException(status_code=400, detail=f"File must be an image or PDF (got {file.content_type})")
 
     # Create temp file for processing
     temp_dir = tempfile.mkdtemp()
@@ -119,9 +119,28 @@ async def process_technical_drawing(
 
         logger.info(f"Processing {file.filename} in mode: {mode}")
 
+        # If PDF, convert first page to image
+        if file.content_type == "application/pdf":
+            import fitz  # PyMuPDF
+            pdf_doc = fitz.open(str(temp_input_path))
+            if len(pdf_doc) == 0:
+                raise HTTPException(status_code=400, detail="PDF file is empty")
+
+            # Convert first page to image
+            page = pdf_doc[0]
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x scaling for better quality
+            img_path = str(temp_input_path).replace('.pdf', '_page0.png')
+            pix.save(img_path)
+            pdf_doc.close()
+
+            logger.info(f"Converted PDF first page to image: {img_path}")
+            process_path = img_path
+        else:
+            process_path = str(temp_input_path)
+
         # Process image
         result = await ocr_service.process_technical_drawing(
-            image_path=str(temp_input_path),
+            image_path=process_path,
             mode=mode,
             custom_prompt=custom_prompt,
             extract_dimensions=extract_dimensions,
