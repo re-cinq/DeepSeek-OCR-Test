@@ -31,6 +31,7 @@ class QwenVisionService:
     def __init__(self, model_path: str = "Qwen/Qwen3-VL-8B-Thinking"):
         """Initialize the Vision service with vLLM model"""
         self.model = None
+        self.processor = None
         self.model_path = model_path
 
         # Technical drawing specific system prompts
@@ -48,6 +49,7 @@ Your capabilities include:
 Always provide precise, structured answers. When asked about specific measurements or data, extract the exact values from the drawing."""
 
         self._initialize_model()
+        self._initialize_processor()
 
     def _initialize_model(self):
         """Initialize vLLM AsyncLLMEngine for Qwen3-VL"""
@@ -65,6 +67,16 @@ Always provide precise, structured answers. When asked about specific measuremen
         self.model = AsyncLLMEngine.from_engine_args(engine_args)
 
         print("Qwen3-VL AsyncLLMEngine initialized successfully!")
+
+    def _initialize_processor(self):
+        """Initialize the AutoProcessor for Qwen3-VL"""
+        from transformers import AutoProcessor
+        print(f"Loading processor for {self.model_path}")
+        self.processor = AutoProcessor.from_pretrained(
+            self.model_path,
+            trust_remote_code=True
+        )
+        print("Processor initialized successfully!")
 
     def is_ready(self) -> bool:
         """Check if service is ready"""
@@ -128,35 +140,47 @@ Always provide precise, structured answers. When asked about specific measuremen
             }
             user_prompt = prompts.get(mode, prompts["technical_drawing"])
 
-        # Build the conversation with Qwen3-VL format
-        # Qwen3-VL uses OpenAI-style messages with image URLs
-        image_url = image_to_base64_url(image_path)
-
+        # Build messages in Qwen3-VL format
+        # Qwen3-VL uses OpenAI-style messages with image content type
         messages = [
-            {
-                "role": "system",
-                "content": self.system_prompt
-            },
             {
                 "role": "user",
                 "content": [
                     {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image_url
-                        }
+                        "type": "image",
+                        "image": image_path  # Can be path, URL, or PIL Image
                     },
                     {
                         "type": "text",
-                        "text": user_prompt
+                        "text": f"{self.system_prompt}\n\n{user_prompt}"
                     }
                 ]
             }
         ]
 
-        # Build prompt string for vLLM (Qwen3-VL format)
-        # For AsyncLLMEngine, we need to format as a single prompt string
-        prompt = f"{self.system_prompt}\n\nUser: [Image: {image_path}]\n{user_prompt}\n\nAssistant:"
+        # Apply chat template to format the prompt
+        text_prompt = self.processor.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+
+        # Process vision inputs using qwen_vl_utils
+        from qwen_vl_utils import process_vision_info
+
+        image_inputs, video_inputs, video_kwargs = process_vision_info(
+            messages,
+            image_patch_size=self.processor.image_processor.patch_size,
+            return_video_kwargs=True,
+            return_video_metadata=True
+        )
+
+        # Build multi_modal_data dict
+        mm_data = {}
+        if image_inputs is not None:
+            mm_data['image'] = image_inputs
+        if video_inputs is not None:
+            mm_data['video'] = video_inputs
 
         # Prepare sampling params
         sampling_params = SamplingParams(
@@ -169,13 +193,11 @@ Always provide precise, structured answers. When asked about specific measuremen
         # Generate with AsyncLLMEngine
         request_id = f"request-{int(time.time() * 1000)}"
 
-        # For Qwen3-VL multimodal, we need to pass image in multi_modal_data
-        # The format is: {"image": <PIL.Image or image path>}
+        # Prepare request with proper format
         request = {
-            "prompt": prompt,
-            "multi_modal_data": {
-                "image": img  # Pass PIL Image directly
-            }
+            "prompt": text_prompt,
+            "multi_modal_data": mm_data,
+            "mm_processor_kwargs": video_kwargs
         }
 
         # Stream generate and collect output
