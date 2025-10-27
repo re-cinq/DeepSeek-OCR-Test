@@ -3,6 +3,7 @@ import { useState } from 'react';
 function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessing, apiUrl }) {
   const [question, setQuestion] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
+  const [useGrounding, setUseGrounding] = useState(true);
 
   const predefinedQuestions = [
     "Was ist der Außendurchmesser?",
@@ -29,8 +30,14 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
       const formData = new FormData();
       formData.append('file', imageFile);
       formData.append('mode', 'custom');
-      formData.append('custom_prompt', `<image>\n<|grounding|>${userQuestion}`);
-      formData.append('grounding', 'true');
+
+      // Add grounding tag only if enabled
+      const promptWithGrounding = useGrounding
+        ? `<image>\n<|grounding|>${userQuestion}`
+        : `<image>\n${userQuestion}`;
+
+      formData.append('custom_prompt', promptWithGrounding);
+      formData.append('grounding', useGrounding ? 'true' : 'false');
 
       const response = await fetch(`${apiUrl}/api/ocr`, {
         method: 'POST',
@@ -133,6 +140,22 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
 
       {/* Question Input */}
       <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-md rounded-lg p-4">
+        {/* Grounding Toggle */}
+        <div className="mb-3 flex items-center justify-between">
+          <label className="flex items-center text-white text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useGrounding}
+              onChange={(e) => setUseGrounding(e.target.checked)}
+              className="mr-2"
+            />
+            <span>Visuelle Lokalisierung (Bounding Boxes)</span>
+          </label>
+          <span className="text-xs text-blue-200">
+            {useGrounding ? '📍 An' : '📋 Nur Text'}
+          </span>
+        </div>
+
         <div className="flex gap-2">
           <input
             type="text"
@@ -151,7 +174,9 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
           </button>
         </div>
         <div className="text-xs text-blue-200 mt-2">
-          💡 Tipp: Seien Sie spezifisch! Fragen Sie nach Maßen, Materialien, Teilenummern, Tabellen oder technischen Details.
+          💡 Tipp: {useGrounding
+            ? 'Mit visueller Lokalisierung - Gut für: Einzelne Werte, spezifische Elemente identifizieren'
+            : 'Nur Text-Ausgabe - Gut für: Tabellen, Listen, vollständige Extraktion aller Daten'}
         </div>
       </form>
 
