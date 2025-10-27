@@ -57,37 +57,21 @@ class DeepSeekOCRService:
         self.crop_mode = config.CROP_MODE
 
         # Technical drawing specific prompts
+        # NOTE: <|grounding|> tag is REQUIRED for bounding box annotations
         self.prompts = {
             "technical_drawing": """<image>
-Analyze this technical drawing or engineering diagram. Extract and identify:
-1. All dimensions and measurements (with units and tolerances)
-2. Part numbers, item numbers, and callouts
-3. Tables (especially Bills of Materials/BOMs)
-4. Drawing title, number, revision, and scale
-5. All text annotations and notes
-
-Format the output as structured markdown with clear sections.""",
+<|grounding|>Analyze this technical drawing or engineering diagram. Extract and identify all dimensions, part numbers, tables (especially BOMs), drawing metadata (title, number, revision, scale), and annotations. Convert the document to structured markdown.""",
 
             "dimensions_only": """<image>
-Extract all dimensions and measurements from this technical drawing. Include:
-- Linear dimensions (length, width, height)
-- Diameters (Ø) and radii (R)
-- Angular dimensions
-- Tolerances (±)
-- Units of measurement
-
-List each dimension with its location and context.""",
+<|grounding|>Extract all dimensions and measurements from this technical drawing including linear dimensions, diameters (Ø), radii (R), angular dimensions, tolerances (±), and units. Convert to markdown.""",
 
             "part_numbers": """<image>
-Identify and extract all part numbers, item numbers, and callouts from this technical drawing.
-Include any associated descriptions or labels.""",
+<|grounding|>Identify and extract all part numbers, item numbers, and callouts from this technical drawing with their descriptions. Convert to markdown.""",
 
             "bom_extraction": """<image>
-Extract all tables from this drawing, especially Bills of Materials (BOMs).
-Preserve the table structure with headers and all rows.
-Include item numbers, quantities, descriptions, and part numbers.""",
+<|grounding|>Extract all tables from this drawing, especially Bills of Materials (BOMs). Preserve the table structure with headers and all rows. Convert to markdown.""",
 
-            "plain_ocr": "<image>\nExtract all text from this image.",
+            "plain_ocr": "<image>\n<|grounding|>Convert the document to markdown.",
         }
 
         self._initialize_model()
