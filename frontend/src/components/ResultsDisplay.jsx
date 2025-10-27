@@ -11,8 +11,35 @@ function ResultsDisplay({ results, mode }) {
     { id: 'text', label: 'Full Text', icon: '📄' },
   ];
 
+  // Check if we got minimal/failed results (1 element covering whole image)
+  const hasMinimalResults = results.detected_elements?.length === 1 &&
+    results.detected_elements[0]?.label === 'image' &&
+    results.processing_time < 1;
+
   return (
     <div className="bg-white/10 backdrop-blur-md rounded-lg p-6 space-y-4">
+      {/* Warning for failed processing */}
+      {hasMinimalResults && (
+        <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div className="text-yellow-100">
+              <div className="font-semibold mb-1">Limited Results Detected</div>
+              <div className="text-sm text-yellow-200">
+                The model returned minimal output. This may happen if:
+                <ul className="list-disc ml-5 mt-2 space-y-1">
+                  <li>The image quality is too low or has poor contrast</li>
+                  <li>The image is mostly blank or washed out</li>
+                  <li>The document type doesn't match the selected mode</li>
+                  <li>Try uploading a clearer, higher-resolution image</li>
+                  <li>Try a different processing mode (e.g., "Plain OCR")</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Header */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div className="bg-blue-500/20 rounded-lg p-3 text-center">
