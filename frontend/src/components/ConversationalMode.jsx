@@ -29,7 +29,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
       const formData = new FormData();
       formData.append('file', imageFile);
       formData.append('mode', 'custom');
-      formData.append('custom_prompt', `<image>\n${userQuestion}`);
+      formData.append('custom_prompt', `<image>\n<|grounding|>${userQuestion}`);
       formData.append('grounding', 'true');
 
       const response = await fetch(`${apiUrl}/api/ocr`, {
