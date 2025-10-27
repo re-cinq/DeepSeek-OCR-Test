@@ -15,6 +15,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
     "Beschreibe die technischen Details",
     "Was steht in der Stückliste?",
     "Was ist der Maßstab dieser Zeichnung?",
+    "Zeige mir alle Ansichten (Views) in dieser Zeichnung", // View detection with grounding
   ];
 
   // Upload image when imageFile changes
@@ -47,10 +48,24 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
         setSessionId(data.session_id);
         setUploadStatus('ready');
 
+        // Pass detected elements to parent (for bounding box visualization)
+        if (data.detected_elements && data.detected_elements.length > 0) {
+          onResults({
+            detected_elements: data.detected_elements,
+            image_width: data.image_width,
+            image_height: data.image_height,
+            text: `Automatisch ${data.detected_elements.length} Elemente erkannt`,
+            markdown: ''
+          });
+        }
+
         // Add system message to chat
+        const elementsMsg = data.detected_elements && data.detected_elements.length > 0
+          ? ` (${data.detected_elements.length} Ansichten/Elemente erkannt)`
+          : '';
         setChatHistory([{
           type: 'system',
-          content: `✓ ${data.message}`
+          content: `✓ ${data.message}${elementsMsg}`
         }]);
 
       } catch (error) {
@@ -79,10 +94,18 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
     setQuestion('');
 
     try {
+      // Enable grounding for view detection and localization queries
+      const enableGrounding = userQuestion.toLowerCase().includes('ansicht') ||
+                             userQuestion.toLowerCase().includes('view') ||
+                             userQuestion.toLowerCase().includes('zeige') ||
+                             userQuestion.toLowerCase().includes('locate') ||
+                             userQuestion.toLowerCase().includes('wo ist') ||
+                             userQuestion.toLowerCase().includes('finde');
+
       const formData = new FormData();
       formData.append('session_id', sessionId);
       formData.append('question', userQuestion);
-      formData.append('use_grounding', 'false'); // Qwen3-VL doesn't use grounding tags
+      formData.append('use_grounding', enableGrounding ? 'true' : 'false');
 
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',

@@ -5,6 +5,7 @@ const ELEMENT_COLORS = {
   part_number: '#3b82f6', // blue
   table: '#f59e0b', // amber
   title: '#8b5cf6', // purple
+  view: '#ef4444', // red - for different views (front, side, top, etc.)
   text: '#6b7280', // gray
   image: '#ec4899', // pink
 };

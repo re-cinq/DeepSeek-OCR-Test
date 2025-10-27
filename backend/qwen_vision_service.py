@@ -105,6 +105,86 @@ Always provide precise, structured answers. When asked about specific measuremen
         img_str = base64.b64encode(buffered.getvalue()).decode()
         return f"data:image/png;base64,{img_str}"
 
+    def parse_grounding_json(self, text: str, img_width: int, img_height: int) -> List[DetectedElement]:
+        """Parse JSON bbox format from Qwen3-VL grounding output"""
+        import json
+
+        elements = []
+        try:
+            # Try to extract JSON from markdown code block
+            json_match = re.search(r'```json\s*\n(.*?)\n```', text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                # Try to find JSON array directly
+                json_match = re.search(r'\[\s*\{.*?\}\s*\]', text, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                else:
+                    return elements
+
+            # Parse JSON
+            bbox_data = json.loads(json_str)
+
+            if not isinstance(bbox_data, list):
+                bbox_data = [bbox_data]
+
+            # Convert to DetectedElement objects
+            for item in bbox_data:
+                if 'bbox_2d' not in item:
+                    continue
+
+                x1, y1, x2, y2 = item['bbox_2d']
+                label = item.get('label', 'unknown')
+                sub_label = item.get('sub_label', '')
+
+                # Classify element type based on label
+                element_type = self._classify_element_type(label)
+
+                # Create full label
+                full_label = f"{label} {sub_label}".strip() if sub_label else label
+
+                bbox = BoundingBox(x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2))
+                elements.append(DetectedElement(
+                    label=full_label,
+                    element_type=element_type,
+                    bbox=bbox
+                ))
+
+            print(f"DEBUG: Parsed {len(elements)} grounding elements from JSON")
+
+        except Exception as e:
+            print(f"ERROR: Failed to parse grounding JSON: {e}")
+            print(f"DEBUG: Text snippet: {text[:500]}")
+
+        return elements
+
+    def _classify_element_type(self, label: str) -> str:
+        """Classify element type based on label for color coding"""
+        label_lower = label.lower()
+
+        # View types
+        if any(view in label_lower for view in ['view', 'section', 'detail', 'isometric', 'perspective']):
+            return 'view'
+
+        # Dimensions
+        if any(dim in label_lower for dim in ['dimension', 'measurement', 'ø', 'diameter', 'radius', 'r', '±']):
+            return 'dimension'
+
+        # Part numbers
+        if any(part in label_lower for part in ['part', 'item', 'pos', 'callout']):
+            return 'part_number'
+
+        # Tables
+        if any(table in label_lower for table in ['table', 'bom', 'bill of material']):
+            return 'table'
+
+        # Title blocks
+        if any(title in label_lower for title in ['title', 'drawing number', 'revision']):
+            return 'title'
+
+        return 'text'
+
     async def process_technical_drawing(
         self,
         image_path: str,
@@ -132,11 +212,12 @@ Always provide precise, structured answers. When asked about specific measuremen
         else:
             # Predefined prompts based on mode
             prompts = {
-                "technical_drawing": "Analyze this technical drawing thoroughly. Extract all dimensions, part numbers, tables (especially BOMs), drawing metadata (title, number, revision, scale), and annotations. Provide a structured markdown output.",
+                "technical_drawing": "Analyze this technical drawing thoroughly. Extract all dimensions, part numbers, tables (especially BOMs), drawing metadata (title, number, revision, scale), and annotations. Provide a structured markdown output." if not grounding else "Analyze this technical drawing thoroughly. Detect and locate all important elements including dimensions, part numbers, tables, and annotations. Return their locations in JSON format: [{\"bbox_2d\": [x1, y1, x2, y2], \"label\": \"element description\"}]",
                 "dimensions_only": "Extract all dimensions and measurements from this technical drawing including linear dimensions, diameters (Ø), radii (R), angular dimensions, tolerances (±), and units. List them clearly.",
                 "part_numbers": "Identify and extract all part numbers, item numbers, and callouts from this technical drawing with their descriptions.",
                 "bom_extraction": "Extract all tables from this drawing, especially Bills of Materials (BOMs). Preserve the table structure with headers and all rows in markdown format.",
                 "plain_ocr": "Read and transcribe all text visible in this image.",
+                "view_detection": "Detect all views in this technical drawing including: front view, side view, top view, section views (A-A, B-B, etc.), detail views, isometric/3D views, and any auxiliary views. Return their locations and labels in JSON format: [{\"bbox_2d\": [x1, y1, x2, y2], \"label\": \"view name\", \"sub_label\": \"additional info\"}]. Be precise with the bounding box coordinates.",
             }
             user_prompt = prompts.get(mode, prompts["technical_drawing"])
 
@@ -211,9 +292,11 @@ Always provide precise, structured answers. When asked about specific measuremen
         print(f"DEBUG: Qwen3-VL output length: {len(output_text)}")
         print(f"DEBUG: First 500 chars: {output_text[:500]}")
 
-        # Note: Qwen3-VL doesn't use grounding tags like DeepSeek-OCR
-        # It returns natural language responses
-        detected_elements = []  # No bounding boxes from Qwen3-VL in standard mode
+        # Parse detections if grounding is enabled
+        detected_elements = []
+        if grounding:
+            detected_elements = self.parse_grounding_json(output_text, img_width, img_height)
+            print(f"DEBUG: Parsed {len(detected_elements)} grounded elements")
 
         processing_time = time.time() - start_time
 

@@ -151,19 +151,43 @@ async def upload_image(
         else:
             process_path = str(image_path)
 
-        # Store session data
+        # Run automatic view detection on upload
+        logger.info(f"Running automatic view detection for session {session_id}")
+        detected_elements = []
+        img_width = 0
+        img_height = 0
+        try:
+            view_detection_result = await vision_service.process_technical_drawing(
+                image_path=process_path,
+                mode="view_detection",
+                grounding=True
+            )
+            detected_elements = view_detection_result.detected_elements
+            img_width = view_detection_result.image_width
+            img_height = view_detection_result.image_height
+            logger.info(f"✓ Detected {len(detected_elements)} views/elements automatically")
+        except Exception as e:
+            logger.warning(f"Automatic view detection failed: {e}")
+
+        # Store session data with detected elements
         image_sessions[session_id] = {
             "image_path": process_path,
             "original_filename": file.filename,
             "uploaded_at": datetime.now(),
-            "content_type": file.content_type
+            "content_type": file.content_type,
+            "detected_elements": detected_elements,  # Store for later reference
+            "image_width": img_width,
+            "image_height": img_height
         }
 
         return {
             "session_id": session_id,
             "filename": file.filename,
             "status": "ready",
-            "message": "Bild erfolgreich hochgeladen. Sie können nun Fragen stellen."
+            "message": "Bild erfolgreich hochgeladen. Sie können nun Fragen stellen.",
+            "detected_elements": [elem.dict() for elem in detected_elements],  # Return elements to frontend
+            "image_width": img_width,
+            "image_height": img_height
         }
 
     except Exception as e:
@@ -201,12 +225,16 @@ async def chat_with_image(
         raise HTTPException(status_code=404, detail="Image file no longer exists. Please re-upload.")
 
     try:
-        logger.info(f"Chat query for session {session_id}: {question}")
+        logger.info(f"Chat query for session {session_id}: {question} (grounding={use_grounding})")
 
-        # Build prompt with or without grounding
-        custom_prompt = f"<image>\n{'<|grounding|>' if use_grounding else ''}{question}"
+        # Build prompt for Qwen3-VL (no special tags needed, grounding is requested in the prompt itself)
+        if use_grounding:
+            # Add instruction to return JSON with bounding boxes
+            custom_prompt = f"{question}\n\nReturn the locations in JSON format: [{{\"bbox_2d\": [x1, y1, x2, y2], \"label\": \"description\"}}]"
+        else:
+            custom_prompt = question
 
-        # Process with OCR service
+        # Process with Vision service
         result = await vision_service.process_technical_drawing(
             image_path=image_path,
             mode="custom",
