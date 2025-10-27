@@ -28,7 +28,7 @@ from models import (
 class QwenVisionService:
     """Service class for Qwen3-VL Vision operations"""
 
-    def __init__(self, model_path: str = "Qwen/Qwen3-VL-8B-Thinking"):
+    def __init__(self, model_path: str = "Qwen/Qwen3-VL-8B-Instruct"):
         """Initialize the Vision service with vLLM model"""
         self.model = None
         self.processor = None

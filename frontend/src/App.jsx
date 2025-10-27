@@ -39,7 +39,7 @@ function App() {
             Stellen Sie Fragen zu Ihren technischen Zeichnungen in natürlicher Sprache
           </p>
           <p className="text-blue-300 text-sm mt-1">
-            Angetrieben von Qwen3-VL-8B-Thinking mit vLLM
+            Angetrieben von Qwen3-VL-8B-Instruct mit vLLM
           </p>
         </div>
 

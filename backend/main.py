@@ -123,7 +123,7 @@ async def root():
         "status": "running",
         "service": "Qwen3-VL Technical Drawing API",
         "version": "2.0.0",
-        "model": "Qwen3-VL-8B-Thinking",
+        "model": "Qwen3-VL-8B-Instruct",
         "model_ready": vision_service is not None and vision_service.is_ready()
     }
 

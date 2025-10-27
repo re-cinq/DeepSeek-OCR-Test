@@ -3,7 +3,7 @@
 
 echo "🚀 Starting Qwen3-VL Backend..."
 echo ""
-echo "Model: Qwen3-VL-8B-Thinking"
+echo "Model: Qwen3-VL-8B-Instruct (non-reasoning, direct answers)"
 echo "Engine: V1 (with flash-attn auto-detection)"
 echo "GPU Memory: 90% utilization"
 echo ""
