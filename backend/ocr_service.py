@@ -113,6 +113,11 @@ class DeepSeekOCRService:
 
         img = Image.open(image_path)
         img = ImageOps.exif_transpose(img)
+
+        # Convert to RGB if needed (handles RGBA, LA, L, etc.)
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+
         width, height = img.size
         return img, width, height
 
