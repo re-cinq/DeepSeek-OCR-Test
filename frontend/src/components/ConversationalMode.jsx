@@ -81,7 +81,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
   return (
     <div className="space-y-4">
       {/* Chat History */}
-      <div className="bg-white/5 backdrop-blur-md rounded-lg p-4 space-y-4 max-h-[500px] overflow-y-auto">
+      <div className="bg-white/5 backdrop-blur-md rounded-lg p-4 space-y-4 max-h-[600px] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-gray-700">
         {chatHistory.length === 0 ? (
           <div className="text-center text-blue-200 py-8">
             <div className="text-4xl mb-3">💬</div>
@@ -92,25 +92,35 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
           </div>
         ) : (
           chatHistory.map((message, idx) => (
-            <div key={idx} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={idx} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
               <div className={`
-                max-w-[80%] rounded-lg p-3
-                ${message.type === 'user' ? 'bg-blue-500 text-white' :
-                  message.type === 'error' ? 'bg-red-500/20 text-red-200 border border-red-500' :
-                  'bg-white/10 text-white'}
+                max-w-[85%] rounded-xl p-4 shadow-lg
+                ${message.type === 'user' ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' :
+                  message.type === 'error' ? 'bg-red-500/20 text-red-200 border-2 border-red-500' :
+                  'bg-gradient-to-br from-slate-700/80 to-slate-800/80 text-white border border-slate-600/50'}
               `}>
                 {message.type === 'user' && (
                   <div className="text-xs text-blue-100 mb-1">Sie fragten:</div>
                 )}
                 {message.type === 'assistant' && (
-                  <div className="text-xs text-blue-200 mb-1">
-                    KI-Antwort ({message.processingTime?.toFixed(1)}s)
+                  <div className="text-xs text-slate-300 mb-2 flex items-center gap-2">
+                    <span className="font-semibold">🤖 KI-Antwort</span>
+                    <span className="bg-slate-600/50 px-2 py-0.5 rounded">
+                      {message.processingTime?.toFixed(1)}s
+                    </span>
                   </div>
                 )}
-                <div className="whitespace-pre-wrap text-sm">{message.content}</div>
+                <div
+                  className="text-sm leading-relaxed [&>table]:w-full [&>table]:border-collapse [&>table]:my-2 [&>table_td]:border [&>table_td]:border-slate-500 [&>table_td]:px-2 [&>table_td]:py-1 [&>table_th]:border [&>table_th]:border-slate-400 [&>table_th]:bg-slate-600/50 [&>table_th]:px-2 [&>table_th]:py-1 [&>table_th]:font-semibold"
+                  dangerouslySetInnerHTML={{ __html: message.content.replace(/\n/g, '<br/>') }}
+                />
                 {message.elements && message.elements.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-white/20 text-xs text-blue-200">
-                    {message.elements.length} Elemente erkannt
+                  <div className="mt-3 pt-3 border-t border-slate-500/30">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="bg-green-500/20 text-green-300 px-2 py-1 rounded font-medium">
+                        📍 {message.elements.length} Elemente lokalisiert
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -121,15 +131,18 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
 
       {/* Quick Questions */}
       {chatHistory.length === 0 && (
-        <div className="bg-white/5 backdrop-blur-md rounded-lg p-4">
-          <div className="text-blue-200 text-sm font-semibold mb-3">Schnellfragen:</div>
+        <div className="bg-white/5 backdrop-blur-md rounded-lg p-4 border border-slate-600/30">
+          <div className="text-blue-200 text-sm font-semibold mb-3 flex items-center gap-2">
+            <span>⚡</span>
+            <span>Schnellfragen:</span>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {predefinedQuestions.map((q, idx) => (
               <button
                 key={idx}
                 onClick={() => askQuestion(q)}
                 disabled={!imageFile || isProcessing}
-                className="text-left text-sm bg-blue-500/20 hover:bg-blue-500/30 disabled:bg-gray-500/20 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg transition-colors"
+                className="text-left text-sm bg-gradient-to-r from-blue-500/20 to-blue-600/20 hover:from-blue-500/30 hover:to-blue-600/30 disabled:bg-gray-500/20 disabled:cursor-not-allowed text-white px-3 py-2.5 rounded-lg transition-all border border-blue-500/30 hover:border-blue-400/50 hover:shadow-lg"
               >
                 {q}
               </button>
@@ -139,38 +152,52 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
       )}
 
       {/* Question Input */}
-      <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-md rounded-lg p-4">
+      <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-slate-600/30 shadow-lg">
         {/* Grounding Toggle */}
-        <div className="mb-3 flex items-center justify-between">
-          <label className="flex items-center text-white text-sm cursor-pointer">
+        <div className="mb-4 flex items-center justify-between bg-slate-700/30 rounded-lg p-3">
+          <label className="flex items-center text-white text-sm cursor-pointer font-medium">
             <input
               type="checkbox"
               checked={useGrounding}
               onChange={(e) => setUseGrounding(e.target.checked)}
-              className="mr-2"
+              className="mr-2 w-4 h-4"
             />
-            <span>Visuelle Lokalisierung (Bounding Boxes)</span>
+            <span>Visuelle Lokalisierung</span>
           </label>
-          <span className="text-xs text-blue-200">
-            {useGrounding ? '📍 An' : '📋 Nur Text'}
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+            useGrounding
+              ? 'bg-green-500/20 text-green-300'
+              : 'bg-blue-500/20 text-blue-300'
+          }`}>
+            {useGrounding ? '📍 Bounding Boxes' : '📋 Nur Text'}
           </span>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Stellen Sie eine Frage zu dieser Zeichnung..."
             disabled={!imageFile || isProcessing}
-            className="flex-1 bg-white/5 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-blue-200 focus:outline-none focus:border-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 bg-slate-700/50 border-2 border-slate-600/50 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:bg-slate-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-base"
           />
           <button
             type="submit"
             disabled={!imageFile || !question.trim() || isProcessing}
-            className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-500 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg transition-colors font-semibold"
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl disabled:shadow-none text-base"
           >
-            {isProcessing ? 'Verarbeite...' : 'Fragen'}
+            {isProcessing ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Verarbeite...</span>
+              </span>
+            ) : (
+              'Fragen'
+            )}
           </button>
         </div>
         <div className="text-xs text-blue-200 mt-2">
