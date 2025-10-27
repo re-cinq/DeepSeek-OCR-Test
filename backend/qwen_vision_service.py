@@ -12,7 +12,8 @@ import torch
 import base64
 from io import BytesIO
 
-os.environ['VLLM_USE_V1'] = '0'
+# Use V1 engine for Qwen3-VL (required by vLLM >= 0.11.0)
+os.environ['VLLM_USE_V1'] = '1'
 
 from vllm import AsyncLLMEngine, SamplingParams
 from vllm.engine.arg_utils import AsyncEngineArgs
