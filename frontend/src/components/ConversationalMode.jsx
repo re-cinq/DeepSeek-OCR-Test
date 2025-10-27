@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessing, apiUrl }) {
   const [question, setQuestion] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const [useGrounding, setUseGrounding] = useState(true);
+  const [sessionId, setSessionId] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle', 'uploading', 'ready', 'error'
 
   const predefinedQuestions = [
     "Was ist der Außendurchmesser?",
@@ -16,8 +18,59 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
     "Was ist der Maßstab dieser Zeichnung?",
   ];
 
+  // Upload image when imageFile changes
+  useEffect(() => {
+    if (!imageFile) {
+      setSessionId(null);
+      setUploadStatus('idle');
+      setChatHistory([]);
+      return;
+    }
+
+    const uploadImage = async () => {
+      setUploadStatus('uploading');
+      setIsProcessing(true);
+
+      try {
+        const formData = new FormData();
+        formData.append('file', imageFile);
+
+        const response = await fetch(`${apiUrl}/api/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setSessionId(data.session_id);
+        setUploadStatus('ready');
+
+        // Add system message to chat
+        setChatHistory([{
+          type: 'system',
+          content: `✓ ${data.message}`
+        }]);
+
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        setUploadStatus('error');
+        setChatHistory([{
+          type: 'error',
+          content: `Upload-Fehler: ${error.message}`
+        }]);
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    uploadImage();
+  }, [imageFile, apiUrl, setIsProcessing]);
+
   const askQuestion = async (questionText) => {
-    if (!imageFile || !questionText.trim() || isProcessing) return;
+    if (!sessionId || !questionText.trim() || isProcessing) return;
 
     setIsProcessing(true);
     const userQuestion = questionText.trim();
@@ -28,18 +81,11 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
 
     try {
       const formData = new FormData();
-      formData.append('file', imageFile);
-      formData.append('mode', 'custom');
+      formData.append('session_id', sessionId);
+      formData.append('question', userQuestion);
+      formData.append('use_grounding', useGrounding ? 'true' : 'false');
 
-      // Add grounding tag only if enabled
-      const promptWithGrounding = useGrounding
-        ? `<image>\n<|grounding|>${userQuestion}`
-        : `<image>\n${userQuestion}`;
-
-      formData.append('custom_prompt', promptWithGrounding);
-      formData.append('grounding', useGrounding ? 'true' : 'false');
-
-      const response = await fetch(`${apiUrl}/api/ocr`, {
+      const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         body: formData,
       });
@@ -82,7 +128,15 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
     <div className="space-y-4">
       {/* Chat History */}
       <div className="bg-white/5 backdrop-blur-md rounded-lg p-4 space-y-4 max-h-[600px] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-500 scrollbar-track-gray-700">
-        {chatHistory.length === 0 ? (
+        {uploadStatus === 'uploading' ? (
+          <div className="text-center text-blue-200 py-8">
+            <div className="text-4xl mb-3">⏳</div>
+            <div className="text-lg font-semibold mb-2">Bild wird verarbeitet...</div>
+            <div className="text-sm">
+              Das Bild wird hochgeladen und vorbereitet
+            </div>
+          </div>
+        ) : chatHistory.length === 0 ? (
           <div className="text-center text-blue-200 py-8">
             <div className="text-4xl mb-3">💬</div>
             <div className="text-lg font-semibold mb-2">Konversationelle OCR</div>
@@ -92,11 +146,12 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
           </div>
         ) : (
           chatHistory.map((message, idx) => (
-            <div key={idx} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
+            <div key={idx} className={`flex ${message.type === 'user' ? 'justify-end' : message.type === 'system' ? 'justify-center' : 'justify-start'} mb-4`}>
               <div className={`
-                max-w-[85%] rounded-xl p-4 shadow-lg
+                ${message.type === 'system' ? 'max-w-[100%] bg-green-500/10 border border-green-500/30 text-green-200 text-center' : 'max-w-[85%]'} rounded-xl p-4 shadow-lg
                 ${message.type === 'user' ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white' :
                   message.type === 'error' ? 'bg-red-500/20 text-red-200 border-2 border-red-500' :
+                  message.type === 'system' ? '' :
                   'bg-gradient-to-br from-slate-700/80 to-slate-800/80 text-white border border-slate-600/50'}
               `}>
                 {message.type === 'user' && (
@@ -130,7 +185,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
       </div>
 
       {/* Quick Questions */}
-      {chatHistory.length === 0 && (
+      {uploadStatus === 'ready' && chatHistory.length <= 1 && (
         <div className="bg-white/5 backdrop-blur-md rounded-lg p-4 border border-slate-600/30">
           <div className="text-blue-200 text-sm font-semibold mb-3 flex items-center gap-2">
             <span>⚡</span>
@@ -141,7 +196,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
               <button
                 key={idx}
                 onClick={() => askQuestion(q)}
-                disabled={!imageFile || isProcessing}
+                disabled={!sessionId || isProcessing}
                 className="text-left text-sm bg-gradient-to-r from-blue-500/20 to-blue-600/20 hover:from-blue-500/30 hover:to-blue-600/30 disabled:bg-gray-500/20 disabled:cursor-not-allowed text-white px-3 py-2.5 rounded-lg transition-all border border-blue-500/30 hover:border-blue-400/50 hover:shadow-lg"
               >
                 {q}
@@ -178,13 +233,13 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Stellen Sie eine Frage zu dieser Zeichnung..."
-            disabled={!imageFile || isProcessing}
+            placeholder={uploadStatus === 'ready' ? "Stellen Sie eine Frage zu dieser Zeichnung..." : "Bitte laden Sie zuerst ein Bild hoch..."}
+            disabled={!sessionId || isProcessing}
             className="flex-1 bg-slate-700/50 border-2 border-slate-600/50 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 focus:bg-slate-700/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-base"
           />
           <button
             type="submit"
-            disabled={!imageFile || !question.trim() || isProcessing}
+            disabled={!sessionId || !question.trim() || isProcessing}
             className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl transition-all font-semibold shadow-lg hover:shadow-xl disabled:shadow-none text-base"
           >
             {isProcessing ? (

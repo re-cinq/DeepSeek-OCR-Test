@@ -5,12 +5,14 @@ Uses existing vLLM installation - no Docker required
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from typing import Optional, List
+from typing import Optional, List, Dict
 import uvicorn
 import logging
 from pathlib import Path
 import shutil
 import tempfile
+import uuid
+from datetime import datetime, timedelta
 
 from ocr_service import DeepSeekOCRService
 from models import TechnicalDrawingResponse
@@ -18,6 +20,24 @@ from models import TechnicalDrawingResponse
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Session storage for uploaded images
+# Format: {session_id: {"image_path": str, "uploaded_at": datetime, "metadata": dict}}
+image_sessions: Dict[str, Dict] = {}
+SESSION_EXPIRY_HOURS = 24
+
+def cleanup_expired_sessions():
+    """Remove expired image sessions"""
+    now = datetime.now()
+    expired = [
+        sid for sid, data in image_sessions.items()
+        if now - data["uploaded_at"] > timedelta(hours=SESSION_EXPIRY_HOURS)
+    ]
+    for sid in expired:
+        session_data = image_sessions.pop(sid)
+        if Path(session_data["image_path"]).exists():
+            Path(session_data["image_path"]).unlink()
+        logger.info(f"Cleaned up expired session: {sid}")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -76,6 +96,150 @@ async def health_check():
         "model_loaded": ocr_service is not None and ocr_service.is_ready(),
         "gpu_available": ocr_service.gpu_available() if ocr_service else False
     }
+
+@app.post("/api/upload")
+async def upload_image(
+    file: UploadFile = File(...)
+):
+    """
+    Upload and store an image for conversational chat.
+    Returns a session_id that can be used for subsequent queries.
+    """
+    if not ocr_service:
+        raise HTTPException(status_code=503, detail="OCR service not initialized")
+
+    # Cleanup expired sessions periodically
+    cleanup_expired_sessions()
+
+    # Validate file type
+    if not file.content_type or not (file.content_type.startswith("image/") or file.content_type == "application/pdf"):
+        raise HTTPException(status_code=400, detail=f"File must be an image or PDF (got {file.content_type})")
+
+    # Create session
+    session_id = str(uuid.uuid4())
+
+    # Create persistent temp directory for this session
+    session_dir = Path(tempfile.gettempdir()) / "deepseek_ocr_sessions" / session_id
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    image_path = session_dir / file.filename
+
+    try:
+        # Save uploaded file
+        with open(image_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        logger.info(f"Uploaded {file.filename} - Session: {session_id}")
+
+        # If PDF, convert first page to image
+        if file.content_type == "application/pdf":
+            import fitz  # PyMuPDF
+            pdf_doc = fitz.open(str(image_path))
+            if len(pdf_doc) == 0:
+                raise HTTPException(status_code=400, detail="PDF file is empty")
+
+            # Convert first page to image
+            page = pdf_doc[0]
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # 2x scaling for better quality
+            img_path = str(image_path).replace('.pdf', '_page0.png')
+            pix.save(img_path)
+            pdf_doc.close()
+
+            logger.info(f"Converted PDF first page to image: {img_path}")
+            process_path = img_path
+        else:
+            process_path = str(image_path)
+
+        # Store session data
+        image_sessions[session_id] = {
+            "image_path": process_path,
+            "original_filename": file.filename,
+            "uploaded_at": datetime.now(),
+            "content_type": file.content_type
+        }
+
+        return {
+            "session_id": session_id,
+            "filename": file.filename,
+            "status": "ready",
+            "message": "Bild erfolgreich hochgeladen. Sie können nun Fragen stellen."
+        }
+
+    except Exception as e:
+        logger.error(f"Error uploading image: {e}", exc_info=True)
+        # Cleanup on error
+        if session_dir.exists():
+            shutil.rmtree(session_dir)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/chat")
+async def chat_with_image(
+    session_id: str = Form(...),
+    question: str = Form(...),
+    use_grounding: bool = Form(True),
+    base_size: int = Form(1024),
+    image_size: int = Form(640),
+    crop_mode: bool = Form(True)
+):
+    """
+    Ask a question about a previously uploaded image.
+    Requires a valid session_id from /api/upload
+    """
+    if not ocr_service:
+        raise HTTPException(status_code=503, detail="OCR service not initialized")
+
+    # Check if session exists
+    if session_id not in image_sessions:
+        raise HTTPException(status_code=404, detail="Session not found. Please upload an image first.")
+
+    session_data = image_sessions[session_id]
+    image_path = session_data["image_path"]
+
+    # Check if image file still exists
+    if not Path(image_path).exists():
+        raise HTTPException(status_code=404, detail="Image file no longer exists. Please re-upload.")
+
+    try:
+        logger.info(f"Chat query for session {session_id}: {question}")
+
+        # Build prompt with or without grounding
+        custom_prompt = f"<image>\n{'<|grounding|>' if use_grounding else ''}{question}"
+
+        # Process with OCR service
+        result = await ocr_service.process_technical_drawing(
+            image_path=image_path,
+            mode="custom",
+            custom_prompt=custom_prompt,
+            grounding=use_grounding,
+            base_size=base_size,
+            image_size=image_size,
+            crop_mode=crop_mode
+        )
+
+        logger.info(f"✓ Chat response in {result.processing_time:.2f}s - {len(result.detected_elements)} elements")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error processing chat query: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/session/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a session and its associated image"""
+    if session_id not in image_sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session_data = image_sessions.pop(session_id)
+
+    # Delete the session directory
+    session_dir = Path(session_data["image_path"]).parent
+    if session_dir.exists():
+        shutil.rmtree(session_dir)
+
+    logger.info(f"Deleted session: {session_id}")
+
+    return {"status": "deleted", "session_id": session_id}
 
 @app.post("/api/ocr", response_model=TechnicalDrawingResponse)
 async def process_technical_drawing(
