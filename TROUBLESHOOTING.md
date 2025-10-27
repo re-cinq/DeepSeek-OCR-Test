@@ -142,7 +142,69 @@ uvicorn.run(..., port=8001)
 
 ### Frontend Issues
 
-#### 1. Frontend won't start - tailwindcss error
+#### 1. Node.js version too old - SyntaxError: Unexpected token '.'
+
+**Error:**
+```
+SyntaxError: Unexpected token '.'
+    at Loader.moduleStrategy (internal/modules/esm/translators.js:133:18)
+```
+
+**Cause:**
+Node.js version is too old. Vite 5 requires Node.js 18 or higher.
+
+**Solution:**
+
+Check your Node version:
+```bash
+node --version
+bash check_node.sh
+```
+
+Upgrade to Node.js 18+:
+
+**Option 1: Using NodeSource (recommended for Ubuntu/Debian):**
+```bash
+# Remove old Node.js
+sudo apt-get remove nodejs npm
+
+# Install Node.js 20 (LTS)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify
+node --version  # Should show v20.x.x
+```
+
+**Option 2: Using nvm:**
+```bash
+# Install nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+source ~/.bashrc
+
+# Install Node.js 20
+nvm install 20
+nvm use 20
+nvm alias default 20
+```
+
+**Option 3: Using Conda:**
+```bash
+conda install -c conda-forge nodejs=20
+```
+
+After upgrading:
+```bash
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+cd ..
+./start_frontend.sh
+```
+
+---
+
+#### 2. Frontend won't start - tailwindcss error
 
 **Error:**
 ```
@@ -158,7 +220,7 @@ npm install -D tailwindcss postcss autoprefixer
 
 ---
 
-#### 2. Module not found errors
+#### 3. Module not found errors
 
 **Error:**
 ```
@@ -175,7 +237,7 @@ npm install
 
 ---
 
-#### 3. Connection refused / Network error
+#### 4. Connection refused / Network error
 
 **Error in browser:**
 ```
@@ -193,7 +255,7 @@ allow_origins=["http://localhost:5173", "http://your-domain.com"]
 
 ---
 
-#### 4. Blank page / White screen
+#### 5. Blank page / White screen
 
 **Solution:**
 1. Open browser console (F12)

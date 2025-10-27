@@ -31,10 +31,10 @@ function ImageUpload({ onImageUpload, disabled }) {
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       const file = files[0];
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
         onImageUpload(file);
       } else {
-        alert('Please upload an image file');
+        alert('Please upload an image or PDF file');
       }
     }
   };
@@ -72,7 +72,7 @@ function ImageUpload({ onImageUpload, disabled }) {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf"
         className="hidden"
         onChange={handleFileSelect}
         disabled={disabled}
@@ -102,7 +102,7 @@ function ImageUpload({ onImageUpload, disabled }) {
         </p>
 
         <p className="text-blue-300 text-xs mt-2">
-          Supports: JPG, PNG, TIFF (CAD drawings, blueprints, engineering diagrams)
+          Supports: JPG, PNG, TIFF, PDF (CAD drawings, blueprints, engineering diagrams)
         </p>
       </div>
     </div>

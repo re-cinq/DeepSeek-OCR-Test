@@ -4,8 +4,16 @@
 
 - Python 3.9+
 - CUDA-capable GPU (for inference)
-- Node.js 18+ (for frontend)
+- **Node.js 18+** (for frontend) - **IMPORTANT: Version 18 or higher required!**
 - Git
+
+### Check Your Node.js Version
+
+```bash
+node --version  # Must be v18.0.0 or higher
+```
+
+If you have an older version, see the [Node.js Upgrade](#nodejs-upgrade) section below.
 
 ## Step-by-Step Installation
 
@@ -367,9 +375,73 @@ CUDA available: True
 
 ---
 
+## Node.js Upgrade
+
+If you have Node.js < 18, you need to upgrade:
+
+### Check Current Version
+
+```bash
+bash check_node.sh
+```
+
+### Option 1: Using NodeSource Repository (Recommended)
+
+```bash
+# Remove old Node.js
+sudo apt-get remove nodejs npm
+
+# Install Node.js 20 (LTS)
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify
+node --version  # Should show v20.x.x
+npm --version
+```
+
+### Option 2: Using nvm (Node Version Manager)
+
+```bash
+# Install nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Reload shell configuration
+source ~/.bashrc
+
+# Install Node.js 20
+nvm install 20
+nvm use 20
+nvm alias default 20
+
+# Verify
+node --version  # Should show v20.x.x
+```
+
+### Option 3: Using Conda (if you're using conda environments)
+
+```bash
+conda install -c conda-forge nodejs=20
+```
+
+### After Upgrading
+
+```bash
+# Install frontend dependencies
+cd frontend
+npm install
+cd ..
+
+# Start frontend
+./start_frontend.sh
+```
+
+---
+
 ## Getting Help
 
-- Run `python check_env.py` to diagnose issues
+- Run `bash check_node.sh` to check Node.js version
+- Run `python check_env.py` to diagnose Python issues
 - Read [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 - Check existing issues: https://github.com/re-cinq/DeepSeek-OCR-Test/issues
 - Open new issue with output from `python check_env.py`
