@@ -20,8 +20,8 @@ os.environ['VLLM_USE_V1'] = '0'
 DEEPSEEK_VLLM_DIR = Path(__file__).parent.parent / "DeepSeek-OCR-master" / "DeepSeek-OCR-vllm"
 sys.path.insert(0, str(DEEPSEEK_VLLM_DIR))
 
-from vllm import LLM, SamplingParams
-from vllm.sampling_params import GuidedDecodingParams
+from vllm import AsyncLLMEngine, SamplingParams
+from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.model_executor.models.registry import ModelRegistry
 from deepseek_ocr import DeepseekOCRForCausalLM
 from process.image_process import DeepseekOCRProcessor
@@ -78,26 +78,26 @@ class DeepSeekOCRService:
 
     def _initialize_model(self):
         """Initialize vLLM model and processor"""
-        print("Initializing DeepSeek-OCR model with vLLM...")
+        print("Initializing DeepSeek-OCR model with AsyncLLMEngine...")
 
         # Initialize processor
         self.processor = DeepseekOCRProcessor()
         self.tokenizer = config.TOKENIZER
 
-        # Initialize vLLM LLM
-        self.model = LLM(
+        # Initialize AsyncLLMEngine with same params as original script
+        engine_args = AsyncEngineArgs(
             model=self.model_path,
             hf_overrides={"architectures": ["DeepseekOCRForCausalLM"]},
             block_size=256,
-            tensor_parallel_size=1,
-            gpu_memory_utilization=0.9,
+            max_model_len=8192,
             enforce_eager=False,
             trust_remote_code=True,
-            max_model_len=8192,
-            max_num_seqs=128,
+            tensor_parallel_size=1,
+            gpu_memory_utilization=0.75,  # Match original script
         )
+        self.model = AsyncLLMEngine.from_engine_args(engine_args)
 
-        print("Model initialized successfully!")
+        print("AsyncLLMEngine initialized successfully!")
 
     def is_ready(self) -> bool:
         """Check if service is ready"""
@@ -336,33 +336,43 @@ class DeepSeekOCRService:
             # Restore original prompt
             config.PROMPT = original_prompt
 
-        # Prepare sampling params
+        # Prepare sampling params (match original script exactly)
+        logits_processors = [
+            NoRepeatNGramLogitsProcessor(
+                ngram_size=30,
+                window_size=90,
+                whitelist_token_ids={128821, 128822}  # <td>, </td>
+            )
+        ]
+
         sampling_params = SamplingParams(
             temperature=0.0,
             max_tokens=8192,
-            stop_token_ids=[100001],
-            logits_processors=[
-                NoRepeatNGramLogitsProcessor(
-                    ngram_size=30,
-                    window_size=70,
-                    whitelist_token_ids={128821, 128822}
-                )
-            ]
+            logits_processors=logits_processors,
+            skip_special_tokens=False,
         )
 
-        # Generate with vLLM
-        # The image_data is in the format expected by the model
-        # Must pass as a list of dictionaries for batch processing
-        outputs = self.model.generate(
-            [{
+        # Generate with AsyncLLMEngine (exactly like original script)
+        request_id = f"request-{int(time.time())}"
+
+        # Prepare request dict (NOT as a list - async engine takes dict directly)
+        if '<image>' in prompt:
+            request = {
                 "prompt": prompt,
                 "multi_modal_data": {"image": image_data}
-            }],
-            sampling_params=sampling_params
-        )
+            }
+        else:
+            request = {
+                "prompt": prompt
+            }
 
-        # Extract output text
-        output_text = outputs[0].outputs[0].text
+        # Stream generate (collect full output)
+        output_text = ""
+        async for request_output in self.model.generate(
+            request, sampling_params, request_id
+        ):
+            if request_output.outputs:
+                output_text = request_output.outputs[0].text
 
         # Debug logging
         print(f"DEBUG: Output text length: {len(output_text)}")
