@@ -6,7 +6,37 @@ This web application is specifically designed for **engineering drawings, machin
 
 ## ✨ Key Features
 
-### 1. Multiple Analysis Modes
+### 1. 💬 Conversational Mode (NEW!)
+
+**What it does:**
+- Chat with your technical drawings using natural language
+- Ask specific questions instead of extracting everything
+- Get targeted answers with visual grounding
+
+**Perfect for:**
+- Specific information lookup ("What is the outer diameter?")
+- Quick dimension checks ("Show me all tolerances")
+- Material identification ("What material is this made of?")
+- Table queries ("What's in the BOM?")
+
+**Example Questions:**
+- ✓ "What is the outer diameter?"
+- ✓ "List all dimensions with tolerances"
+- ✓ "What material specifications are shown?"
+- ✓ "Extract all part numbers"
+- ✓ "What are the critical dimensions?"
+- ✓ "What is shown in the BOM table?"
+
+**How it works:**
+1. Upload your drawing
+2. Switch to 💬 Conversational mode
+3. Type your question in natural language
+4. Get instant answers with highlighted regions
+5. Ask follow-up questions for clarification
+
+---
+
+### 2. Multiple Analysis Modes
 
 #### 📐 Technical Drawing (Comprehensive)
 **What it does:**
@@ -102,7 +132,7 @@ This web application is specifically designed for **engineering drawings, machin
 
 ---
 
-### 2. Visual Grounding (Bounding Boxes)
+### 3. Visual Grounding (Bounding Boxes)
 
 **What it does:**
 - Overlays colored boxes on detected elements
@@ -125,7 +155,7 @@ This web application is specifically designed for **engineering drawings, machin
 
 ---
 
-### 3. Drag & Drop Upload
+### 4. Drag & Drop Upload
 
 **What it does:**
 - Modern file upload interface
@@ -147,7 +177,7 @@ This web application is specifically designed for **engineering drawings, machin
 
 ---
 
-### 4. Structured Results Display
+### 5. Structured Results Display
 
 **Organized in Tabs:**
 
@@ -180,7 +210,7 @@ This web application is specifically designed for **engineering drawings, machin
 
 ---
 
-### 5. Real-time Processing
+### 6. Real-time Processing
 
 **Fast Performance:**
 - 2-10 seconds per image (typical)
@@ -196,7 +226,7 @@ This web application is specifically designed for **engineering drawings, machin
 
 ---
 
-### 6. Export Options
+### 7. Export Options
 
 **Download Results:**
 - ✓ JSON format (structured data)
