@@ -19,7 +19,7 @@ from vllm import LLM, SamplingParams
 from vllm.sampling_params import GuidedDecodingParams
 from process.image_process import DeepseekOCRProcessor
 from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
-from config import Config
+import config
 
 from models import (
     TechnicalDrawingResponse,
@@ -36,10 +36,15 @@ class DeepSeekOCRService:
 
     def __init__(self):
         """Initialize the OCR service with vLLM model"""
-        self.config = Config()
         self.model = None
         self.processor = None
         self.tokenizer = None
+
+        # Load config from module
+        self.model_path = config.MODEL_PATH
+        self.base_size = config.BASE_SIZE
+        self.image_size = config.IMAGE_SIZE
+        self.crop_mode = config.CROP_MODE
 
         # Technical drawing specific prompts
         self.prompts = {
@@ -83,11 +88,11 @@ Include item numbers, quantities, descriptions, and part numbers.""",
 
         # Initialize processor
         self.processor = DeepseekOCRProcessor()
-        self.tokenizer = self.config.TOKENIZER
+        self.tokenizer = config.TOKENIZER
 
         # Initialize vLLM LLM
         self.model = LLM(
-            model=self.config.MODEL_PATH,
+            model=self.model_path,
             tensor_parallel_size=1,
             gpu_memory_utilization=0.9,
             trust_remote_code=True,
