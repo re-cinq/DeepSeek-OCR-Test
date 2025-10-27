@@ -56,7 +56,7 @@ Always provide precise, structured answers. When asked about specific measuremen
         engine_args = AsyncEngineArgs(
             model=self.model_path,
             trust_remote_code=True,
-            tensor_parallel_size=1,  # 30B model runs on 1-2 GPUs
+            tensor_parallel_size=1,  # 30B-A3B MoE runs efficiently on 1 GPU
             gpu_memory_utilization=0.90,
             max_model_len=8192,
             enforce_eager=False,

@@ -4,20 +4,26 @@
 echo "🔧 Fixing dependencies for Qwen3-VL-30B-A3B-Instruct..."
 echo ""
 
-# Step 1: Fix huggingface-hub version conflict
-echo "1️⃣ Downgrading huggingface-hub to <1.0..."
+# Step 1: Upgrade vLLM to >= 0.11.0 (required for Qwen3-VL)
+echo "1️⃣ Upgrading vLLM to latest version (>= 0.11.0)..."
+pip install --upgrade vllm
+echo "✅ vLLM upgraded"
+echo ""
+
+# Step 2: Fix huggingface-hub version conflict
+echo "2️⃣ Downgrading huggingface-hub to <1.0..."
 pip install 'huggingface-hub<1.0' --upgrade
 echo "✅ huggingface-hub fixed"
 echo ""
 
-# Step 2: Upgrade transformers to latest version
-echo "2️⃣ Upgrading transformers to latest version..."
+# Step 3: Upgrade transformers to latest version
+echo "3️⃣ Upgrading transformers to latest version..."
 pip install --upgrade transformers
 echo "✅ transformers upgraded"
 echo ""
 
-# Step 3: Check if qwen3_vl_moe is supported
-echo "3️⃣ Checking if qwen3_vl_moe architecture is supported..."
+# Step 4: Check if qwen3_vl_moe is supported
+echo "4️⃣ Checking if qwen3_vl_moe architecture is supported..."
 python -c "from transformers import AutoConfig; config = AutoConfig.from_pretrained('Qwen/Qwen3-VL-30B-A3B-Instruct'); print('✅ Model type supported:', config.model_type)" 2>&1
 
 if [ $? -ne 0 ]; then
@@ -39,12 +45,15 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo "4️⃣ Installing additional dependencies..."
+echo "5️⃣ Installing additional dependencies..."
 pip install qwen-vl-utils==0.0.14
 echo "✅ qwen-vl-utils installed"
 
 echo ""
 echo "✅ All dependencies fixed!"
+echo ""
+echo "Installed versions:"
+pip list | grep -E "vllm|transformers|huggingface-hub"
 echo ""
 echo "You can now start the backend with:"
 echo "  python main.py"
