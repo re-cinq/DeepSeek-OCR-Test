@@ -1,0 +1,149 @@
+import { useState, useRef } from 'react';
+import ImageUpload from './components/ImageUpload';
+import ModeSelector from './components/ModeSelector';
+import ResultsDisplay from './components/ResultsDisplay';
+import BoundingBoxOverlay from './components/BoundingBoxOverlay';
+
+const API_URL = 'http://localhost:8000';
+
+function App() {
+  const [selectedMode, setSelectedMode] = useState('technical_drawing');
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [results, setResults] = useState(null);
+  const [error, setError] = useState(null);
+  const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
+
+  const handleImageUpload = async (file) => {
+    setUploadedImage(URL.createObjectURL(file));
+    setResults(null);
+    setError(null);
+    setIsProcessing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('mode', selectedMode);
+      formData.append('grounding', 'true');
+      formData.append('extract_dimensions', 'true');
+      formData.append('extract_part_numbers', 'true');
+      formData.append('extract_tables', 'true');
+
+      const response = await fetch(`${API_URL}/api/ocr`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'OCR processing failed');
+      }
+
+      const data = await response.json();
+      setResults(data);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error processing image:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold text-white mb-2">
+            DeepSeek-OCR
+          </h1>
+          <p className="text-blue-200 text-lg">
+            Technical Drawing Analysis & OCR
+          </p>
+          <p className="text-blue-300 text-sm mt-1">
+            Powered by DeepSeek-VL with vLLM
+          </p>
+        </div>
+
+        {/* Mode Selector */}
+        <div className="mb-6">
+          <ModeSelector
+            selectedMode={selectedMode}
+            onModeChange={setSelectedMode}
+            disabled={isProcessing}
+          />
+        </div>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column - Upload & Image Display */}
+          <div className="space-y-4">
+            <ImageUpload
+              onImageUpload={handleImageUpload}
+              disabled={isProcessing}
+            />
+
+            {uploadedImage && (
+              <div className="bg-white/10 backdrop-blur-md rounded-lg p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-white font-semibold">Image Preview</h3>
+                  {results && results.detected_elements && results.detected_elements.length > 0 && (
+                    <label className="flex items-center text-white text-sm">
+                      <input
+                        type="checkbox"
+                        checked={showBoundingBoxes}
+                        onChange={(e) => setShowBoundingBoxes(e.target.checked)}
+                        className="mr-2"
+                      />
+                      Show Bounding Boxes
+                    </label>
+                  )}
+                </div>
+                <div className="relative">
+                  <img
+                    src={uploadedImage}
+                    alt="Uploaded technical drawing"
+                    className="w-full rounded"
+                  />
+                  {showBoundingBoxes && results && results.detected_elements && (
+                    <BoundingBoxOverlay
+                      imageWidth={results.image_width}
+                      imageHeight={results.image_height}
+                      elements={results.detected_elements}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isProcessing && (
+              <div className="bg-blue-500/20 border border-blue-400 rounded-lg p-4 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-2"></div>
+                <p className="text-white">Processing technical drawing...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="bg-red-500/20 border border-red-400 rounded-lg p-4">
+                <p className="text-red-200 font-semibold">Error:</p>
+                <p className="text-red-100">{error}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Results */}
+          <div>
+            {results && (
+              <ResultsDisplay
+                results={results}
+                mode={selectedMode}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
