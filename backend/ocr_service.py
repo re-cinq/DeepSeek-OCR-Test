@@ -328,20 +328,26 @@ Include item numbers, quantities, descriptions, and part numbers.""",
 
         # Select prompt
         if custom_prompt:
-            prompt = custom_prompt.replace("<image>", "<image>")
+            prompt = custom_prompt
         else:
             prompt = self.prompts.get(mode, self.prompts["technical_drawing"])
 
-        # Tokenize with processor
-        input_ids, pixel_values, images_crop, images_seq_mask, images_spatial_crop, num_image_tokens, image_shapes = \
-            self.processor.tokenize_with_images(
-                tokenizer=self.tokenizer,
+        # Temporarily set config.PROMPT for the processor to use
+        original_prompt = config.PROMPT
+        config.PROMPT = prompt
+
+        try:
+            # Tokenize with processor (uses config.PROMPT internally)
+            # Returns: [[input_ids, pixel_values, images_crop, images_seq_mask, images_spatial_crop, num_image_tokens, image_shapes]]
+            image_data = self.processor.tokenize_with_images(
                 images=[img],
-                prompt=prompt,
-                base_size=base_size,
-                image_size=image_size,
-                crop_mode=crop_mode
+                bos=True,
+                eos=True,
+                cropping=crop_mode
             )
+        finally:
+            # Restore original prompt
+            config.PROMPT = original_prompt
 
         # Prepare sampling params
         sampling_params = SamplingParams(
@@ -358,14 +364,13 @@ Include item numbers, quantities, descriptions, and part numbers.""",
         )
 
         # Generate with vLLM
+        # The image_data is in the format expected by the model
         outputs = self.model.generate(
-            prompt_token_ids=[input_ids],
-            sampling_params=sampling_params,
-            multi_modal_data={
-                "pixel_values": pixel_values,
-                "images_seq_mask": images_seq_mask,
-                "images_spatial_crop": images_spatial_crop
-            }
+            {
+                "prompt": prompt,
+                "multi_modal_data": {"image": image_data}
+            },
+            sampling_params=sampling_params
         )
 
         # Extract output text
