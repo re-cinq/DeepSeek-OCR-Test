@@ -117,8 +117,8 @@ class DeepSeekOCRService:
         """Parse <|ref|> and <|det|> tags from OCR output"""
         elements = []
 
-        # Pattern: <|ref|>label<|det|>[[x1,y1,x2,y2]]
-        pattern = r'<\|ref\|>(.*?)<\|det\|>\[\[(\d+),(\d+),(\d+),(\d+)\]\]'
+        # Pattern: <|ref|>label<|/ref|><|det|>[[x1,y1,x2,y2]]<|/det|>
+        pattern = r'<\|ref\|>(.*?)<\|/ref\|><\|det\|>\[\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]\]<\|/det\|>'
         matches = re.finditer(pattern, text)
 
         for match in matches:

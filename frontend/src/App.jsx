@@ -16,7 +16,12 @@ function App() {
   const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
 
   const handleImageUpload = async (file) => {
-    setUploadedImage(URL.createObjectURL(file));
+    // For images, create object URL for preview. For PDFs, set null (will show message)
+    if (file.type.startsWith('image/')) {
+      setUploadedImage(URL.createObjectURL(file));
+    } else if (file.type === 'application/pdf') {
+      setUploadedImage('PDF');  // Special marker for PDF files
+    }
     setResults(null);
     setError(null);
     setIsProcessing(true);
@@ -101,17 +106,32 @@ function App() {
                   )}
                 </div>
                 <div className="relative">
-                  <img
-                    src={uploadedImage}
-                    alt="Uploaded technical drawing"
-                    className="w-full rounded"
-                  />
-                  {showBoundingBoxes && results && results.detected_elements && (
-                    <BoundingBoxOverlay
-                      imageWidth={results.image_width}
-                      imageHeight={results.image_height}
-                      elements={results.detected_elements}
-                    />
+                  {uploadedImage === 'PDF' ? (
+                    <div className="bg-blue-900/30 border-2 border-blue-500 rounded-lg p-8 text-center">
+                      <svg className="w-16 h-16 text-blue-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="text-white text-lg font-semibold mb-2">PDF Document Uploaded</p>
+                      <p className="text-blue-200 text-sm">Processing first page of PDF...</p>
+                      {results && (
+                        <p className="text-green-300 text-sm mt-2">✓ Processed successfully</p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <img
+                        src={uploadedImage}
+                        alt="Uploaded technical drawing"
+                        className="w-full rounded"
+                      />
+                      {showBoundingBoxes && results && results.detected_elements && (
+                        <BoundingBoxOverlay
+                          imageWidth={results.image_width}
+                          imageHeight={results.image_height}
+                          elements={results.detected_elements}
+                        />
+                      )}
+                    </>
                   )}
                 </div>
               </div>
