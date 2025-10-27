@@ -360,10 +360,17 @@ class DeepSeekOCRService:
         # Extract output text
         output_text = outputs[0].outputs[0].text
 
+        # Debug logging
+        print(f"DEBUG: Output text length: {len(output_text)}")
+        print(f"DEBUG: First 500 chars: {output_text[:500]}")
+        print(f"DEBUG: Contains <|ref|>: {'<|ref|>' in output_text}")
+        print(f"DEBUG: Contains <|det|>: {'<|det|>' in output_text}")
+
         # Parse detections
         detected_elements = []
         if grounding:
             detected_elements = self.parse_detections(output_text, img_width, img_height)
+            print(f"DEBUG: Parsed {len(detected_elements)} elements")
 
         # Extract structured data
         dimensions = []
