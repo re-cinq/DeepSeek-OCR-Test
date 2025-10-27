@@ -339,7 +339,8 @@ class DeepSeekOCRService:
             )
 
             # Debug: log the structure of image_data
-            print(f"DEBUG: Prompt being used: {prompt[:100]}...")
+            print(f"DEBUG: FULL Prompt being used:\n{prompt}\n" + "="*50)
+            print(f"DEBUG: Has <|grounding|> tag: {'<|grounding|>' in prompt}")
             print(f"DEBUG: image_data type: {type(image_data)}")
             if isinstance(image_data, list) and len(image_data) > 0:
                 print(f"DEBUG: image_data[0] (should be list of 7): {type(image_data[0])}, len={len(image_data[0]) if isinstance(image_data[0], list) else 'N/A'}")
