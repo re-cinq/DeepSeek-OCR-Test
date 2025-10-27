@@ -15,12 +15,41 @@ Das Backend nutzt `AsyncLLMEngine` direkt ohne separaten vLLM Server.
 
 ### Voraussetzungen:
 
+**⚠️ WICHTIG**: Qwen3-VL-30B ist sehr neu (Januar 2025) und benötigt die neueste `transformers` Version!
+
+#### Schnelle Installation (empfohlen):
+
 ```bash
-# vLLM >= 0.11.0 installieren
+cd backend
+
+# Automatisches Fix-Script
+./fix_qwen_dependencies.sh
+```
+
+#### Manuelle Installation:
+
+```bash
+# 1. vLLM
 pip install vllm>=0.11.0
 
-# Qwen VL Utils (optional aber empfohlen)
+# 2. Fix huggingface-hub version conflict
+pip install 'huggingface-hub<1.0' --upgrade
+
+# 3. Upgrade transformers
+pip install --upgrade transformers
+
+# 4. Falls transformers qwen3_vl_moe noch nicht kennt:
+#    (Das passiert, wenn das Model zu neu ist)
+pip install git+https://github.com/huggingface/transformers.git
+
+# 5. Qwen VL Utils
 pip install qwen-vl-utils==0.0.14
+```
+
+#### Oder alle Requirements auf einmal:
+
+```bash
+pip install -r requirements_qwen.txt
 ```
 
 ### Model Download:
@@ -143,6 +172,42 @@ engine_args = AsyncEngineArgs(
 ---
 
 ## Troubleshooting:
+
+### ❌ Fehler: "model type `qwen3_vl_moe` not recognized"
+
+```
+ValueError: The checkpoint you are trying to load has model type `qwen3_vl_moe`
+but Transformers does not recognize this architecture.
+```
+
+**Problem**: Deine `transformers` Version kennt den neuen `qwen3_vl_moe` Typ noch nicht.
+
+**Lösung**:
+```bash
+# Schnellste Lösung: Fix-Script
+cd backend
+./fix_qwen_dependencies.sh
+
+# Oder manuell:
+pip install git+https://github.com/huggingface/transformers.git
+```
+
+Nach der Installation Backend neu starten:
+```bash
+python main.py
+```
+
+### ❌ Fehler: "huggingface-hub>=0.30.0,<1.0 is required"
+
+```
+ImportError: huggingface-hub>=0.30.0,<1.0 is required for a normal functioning
+of this module, but found huggingface-hub==1.0.0.
+```
+
+**Lösung**:
+```bash
+pip install 'huggingface-hub<1.0' --upgrade
+```
 
 ### OOM (Out of Memory):
 Mit Qwen3-VL-30B sollte das selten passieren, aber falls doch:
