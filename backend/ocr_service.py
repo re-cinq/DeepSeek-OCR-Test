@@ -349,11 +349,12 @@ class DeepSeekOCRService:
 
         # Generate with vLLM
         # The image_data is in the format expected by the model
+        # Must pass as a list of dictionaries for batch processing
         outputs = self.model.generate(
-            {
+            [{
                 "prompt": prompt,
                 "multi_modal_data": {"image": image_data}
-            },
+            }],
             sampling_params=sampling_params
         )
 
