@@ -1,6 +1,6 @@
 """
-FastAPI Backend for DeepSeek-OCR Technical Drawing Analysis
-Uses existing vLLM installation - no Docker required
+FastAPI Backend for Qwen3-VL Technical Drawing Analysis
+Uses Qwen3-VL for superior reasoning and conversational QA
 """
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +14,7 @@ import tempfile
 import uuid
 from datetime import datetime, timedelta
 
-from ocr_service import DeepSeekOCRService
+from qwen_vision_service import QwenVisionService
 from models import TechnicalDrawingResponse
 
 # Configure logging
@@ -41,9 +41,9 @@ def cleanup_expired_sessions():
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="DeepSeek-OCR Technical Drawing API",
-    description="OCR API specialized for technical drawings, machine parts, and engineering documentation",
-    version="1.0.0"
+    title="Qwen3-VL Technical Drawing API",
+    description="Vision-Language API specialized for technical drawings with conversational QA capabilities",
+    version="2.0.0"
 )
 
 # CORS configuration - allow frontend to connect
@@ -55,37 +55,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize OCR service (singleton)
-ocr_service = None
+# Initialize Vision service (singleton)
+vision_service = None
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize OCR service on startup"""
-    global ocr_service
-    logger.info("Initializing DeepSeek-OCR service with vLLM...")
+    """Initialize Vision service on startup"""
+    global vision_service
+    logger.info("Initializing Qwen3-VL Vision service with vLLM...")
     try:
-        ocr_service = DeepSeekOCRService()
-        logger.info("✓ OCR service initialized successfully")
-        logger.info(f"✓ GPU available: {ocr_service.gpu_available()}")
+        vision_service = QwenVisionService()
+        logger.info("✓ Vision service initialized successfully")
+        logger.info(f"✓ GPU available: {vision_service.gpu_available()}")
     except Exception as e:
-        logger.error(f"✗ Failed to initialize OCR service: {e}")
+        logger.error(f"✗ Failed to initialize Vision service: {e}")
         raise
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    logger.info("Shutting down OCR service...")
-    if ocr_service:
-        ocr_service.cleanup()
+    logger.info("Shutting down Vision service...")
+    if vision_service:
+        vision_service.cleanup()
 
 @app.get("/")
 async def root():
     """Health check endpoint"""
     return {
         "status": "running",
-        "service": "DeepSeek-OCR Technical Drawing API",
-        "version": "1.0.0",
-        "model_ready": ocr_service is not None and ocr_service.is_ready()
+        "service": "Qwen3-VL Technical Drawing API",
+        "version": "2.0.0",
+        "model": "Qwen3-VL-235B-A22B-Instruct",
+        "model_ready": vision_service is not None and vision_service.is_ready()
     }
 
 @app.get("/health")
@@ -93,8 +94,8 @@ async def health_check():
     """Detailed health check"""
     return {
         "status": "healthy",
-        "model_loaded": ocr_service is not None and ocr_service.is_ready(),
-        "gpu_available": ocr_service.gpu_available() if ocr_service else False
+        "model_loaded": vision_service is not None and vision_service.is_ready(),
+        "gpu_available": vision_service.gpu_available() if vision_service else False
     }
 
 @app.post("/api/upload")
@@ -105,8 +106,8 @@ async def upload_image(
     Upload and store an image for conversational chat.
     Returns a session_id that can be used for subsequent queries.
     """
-    if not ocr_service:
-        raise HTTPException(status_code=503, detail="OCR service not initialized")
+    if not vision_service:
+        raise HTTPException(status_code=503, detail="Vision service not initialized")
 
     # Cleanup expired sessions periodically
     cleanup_expired_sessions()
@@ -185,8 +186,8 @@ async def chat_with_image(
     Ask a question about a previously uploaded image.
     Requires a valid session_id from /api/upload
     """
-    if not ocr_service:
-        raise HTTPException(status_code=503, detail="OCR service not initialized")
+    if not vision_service:
+        raise HTTPException(status_code=503, detail="Vision service not initialized")
 
     # Check if session exists
     if session_id not in image_sessions:
@@ -206,7 +207,7 @@ async def chat_with_image(
         custom_prompt = f"<image>\n{'<|grounding|>' if use_grounding else ''}{question}"
 
         # Process with OCR service
-        result = await ocr_service.process_technical_drawing(
+        result = await vision_service.process_technical_drawing(
             image_path=image_path,
             mode="custom",
             custom_prompt=custom_prompt,
@@ -265,8 +266,8 @@ async def process_technical_drawing(
     - plain_ocr: Simple text extraction
     - custom: Use custom_prompt
     """
-    if not ocr_service:
-        raise HTTPException(status_code=503, detail="OCR service not initialized")
+    if not vision_service:
+        raise HTTPException(status_code=503, detail="Vision service not initialized")
 
     # Validate file type
     if not file.content_type or not (file.content_type.startswith("image/") or file.content_type == "application/pdf"):
@@ -303,7 +304,7 @@ async def process_technical_drawing(
             process_path = str(temp_input_path)
 
         # Process image
-        result = await ocr_service.process_technical_drawing(
+        result = await vision_service.process_technical_drawing(
             image_path=process_path,
             mode=mode,
             custom_prompt=custom_prompt,
@@ -336,8 +337,8 @@ async def process_batch(
     grounding: bool = Form(True)
 ):
     """Process multiple technical drawings in batch"""
-    if not ocr_service:
-        raise HTTPException(status_code=503, detail="OCR service not initialized")
+    if not vision_service:
+        raise HTTPException(status_code=503, detail="Vision service not initialized")
 
     if len(files) > 50:
         raise HTTPException(status_code=400, detail="Maximum 50 files per batch")
@@ -359,7 +360,7 @@ async def process_batch(
         logger.info(f"Batch processing {len(file_paths)} images...")
 
         # Process batch
-        results = await ocr_service.process_batch(
+        results = await vision_service.process_batch(
             image_paths=file_paths,
             mode=mode,
             grounding=grounding
@@ -387,8 +388,8 @@ async def process_pdf(
     dpi: int = Form(144)
 ):
     """Process multi-page PDF technical documentation"""
-    if not ocr_service:
-        raise HTTPException(status_code=503, detail="OCR service not initialized")
+    if not vision_service:
+        raise HTTPException(status_code=503, detail="Vision service not initialized")
 
     if not file.content_type == "application/pdf":
         raise HTTPException(status_code=400, detail="File must be a PDF")
@@ -404,7 +405,7 @@ async def process_pdf(
         logger.info(f"Processing PDF: {file.filename}")
 
         # Process PDF
-        result = await ocr_service.process_pdf(
+        result = await vision_service.process_pdf(
             pdf_path=str(temp_pdf_path),
             mode=mode,
             dpi=dpi,

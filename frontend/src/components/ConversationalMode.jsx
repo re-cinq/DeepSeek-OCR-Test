@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessing, apiUrl }) {
   const [question, setQuestion] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
-  const [useGrounding, setUseGrounding] = useState(true);
   const [sessionId, setSessionId] = useState(null);
   const [uploadStatus, setUploadStatus] = useState('idle'); // 'idle', 'uploading', 'ready', 'error'
 
@@ -83,7 +82,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
       const formData = new FormData();
       formData.append('session_id', sessionId);
       formData.append('question', userQuestion);
-      formData.append('use_grounding', useGrounding ? 'true' : 'false');
+      formData.append('use_grounding', 'false'); // Qwen3-VL doesn't use grounding tags
 
       const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
@@ -208,26 +207,6 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
 
       {/* Question Input */}
       <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-slate-600/30 shadow-lg">
-        {/* Grounding Toggle */}
-        <div className="mb-4 flex items-center justify-between bg-slate-700/30 rounded-lg p-3">
-          <label className="flex items-center text-white text-sm cursor-pointer font-medium">
-            <input
-              type="checkbox"
-              checked={useGrounding}
-              onChange={(e) => setUseGrounding(e.target.checked)}
-              className="mr-2 w-4 h-4"
-            />
-            <span>Visuelle Lokalisierung</span>
-          </label>
-          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-            useGrounding
-              ? 'bg-green-500/20 text-green-300'
-              : 'bg-blue-500/20 text-blue-300'
-          }`}>
-            {useGrounding ? '📍 Bounding Boxes' : '📋 Nur Text'}
-          </span>
-        </div>
-
         <div className="flex gap-3">
           <input
             type="text"
@@ -256,9 +235,7 @@ function ConversationalMode({ imageFile, onResults, isProcessing, setIsProcessin
           </button>
         </div>
         <div className="text-xs text-blue-200 mt-2">
-          💡 Tipp: {useGrounding
-            ? 'Mit visueller Lokalisierung - Gut für: Einzelne Werte, spezifische Elemente identifizieren'
-            : 'Nur Text-Ausgabe - Gut für: Tabellen, Listen, vollständige Extraktion aller Daten'}
+          💡 Tipp: Stellen Sie präzise Fragen für bessere Ergebnisse (z.B. "Welche Maße haben eine Toleranz?" statt "Zeig mir die Maße")
         </div>
       </form>
 
