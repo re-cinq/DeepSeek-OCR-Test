@@ -56,7 +56,7 @@ function App() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold text-white mb-2">
-            DeepSeek-OCR
+            re:cinq - OCR Platform
           </h1>
           <p className="text-blue-200 text-lg">
             Technical Drawing Analysis & OCR
