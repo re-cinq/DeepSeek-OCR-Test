@@ -87,8 +87,11 @@ class DeepSeekOCRService:
         # Initialize vLLM LLM
         self.model = LLM(
             model=self.model_path,
+            hf_overrides={"architectures": ["DeepseekOCRForCausalLM"]},
+            block_size=256,
             tensor_parallel_size=1,
             gpu_memory_utilization=0.9,
+            enforce_eager=False,
             trust_remote_code=True,
             max_model_len=8192,
             max_num_seqs=128,
