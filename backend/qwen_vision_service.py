@@ -46,7 +46,14 @@ Your capabilities include:
 - Analyzing geometric tolerancing (GD&T)
 - Reading material specifications
 
-Always provide precise, structured answers. When asked about specific measurements or data, extract the exact values from the drawing."""
+IMPORTANT: Be extremely concise. For simple questions:
+- Give the direct answer first (e.g., "90 mm")
+- Skip reasoning, explanations, and step-by-step analysis
+- Only add brief context if absolutely necessary
+- For measurements: just state the value and unit
+- For yes/no questions: answer yes or no first, then add one sentence if needed
+
+Always provide precise, accurate answers. Extract exact values from the drawing."""
 
         self._initialize_model()
         self._initialize_processor()
@@ -283,9 +290,9 @@ Always provide precise, structured answers. When asked about specific measuremen
 
         # Prepare sampling params
         sampling_params = SamplingParams(
-            temperature=0.1,  # Low temp for more factual responses
+            temperature=0.0,  # Zero temp for most concise, deterministic responses
             top_p=0.9,
-            max_tokens=4096,
+            max_tokens=512,  # Reduced from 4096 to encourage shorter answers
             skip_special_tokens=True,
         )
 
