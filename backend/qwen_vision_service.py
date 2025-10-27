@@ -12,8 +12,8 @@ import torch
 import base64
 from io import BytesIO
 
-# Use V0 engine for better stability with flash-attn
-os.environ['VLLM_USE_V1'] = '0'
+# V1 engine is auto-selected for Qwen3-VL, accept it and disable flash-attn
+os.environ['VLLM_USE_V1'] = '1'
 
 from vllm import AsyncLLMEngine, SamplingParams
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -57,10 +57,10 @@ Always provide precise, structured answers. When asked about specific measuremen
         engine_args = AsyncEngineArgs(
             model=self.model_path,
             trust_remote_code=True,
-            tensor_parallel_size=1,  # 30B-A3B MoE runs efficiently on 1 GPU
+            tensor_parallel_size=1,  # 8B model runs on 1 GPU
             gpu_memory_utilization=0.90,
             max_model_len=8192,
-            enforce_eager=False,
+            enforce_eager=True,  # Disable flash-attn to avoid ABI mismatch
         )
         self.model = AsyncLLMEngine.from_engine_args(engine_args)
 

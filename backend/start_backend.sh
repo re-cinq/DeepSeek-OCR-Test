@@ -3,9 +3,13 @@
 
 echo "🚀 Starting Qwen3-VL Backend..."
 echo ""
+echo "Model: Qwen3-VL-8B-Thinking"
+echo "Engine: V1 (with eager mode - no flash-attn)"
+echo "GPU Memory: 90% utilization"
+echo ""
 
-# Set vLLM to use V0 engine (more stable)
-export VLLM_USE_V1=0
+# V1 engine is auto-selected for Qwen3-VL
+export VLLM_USE_V1=1
 
 # Start FastAPI backend
 python main.py
