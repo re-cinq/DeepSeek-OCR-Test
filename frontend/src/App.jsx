@@ -3,19 +3,25 @@ import ImageUpload from './components/ImageUpload';
 import ModeSelector from './components/ModeSelector';
 import ResultsDisplay from './components/ResultsDisplay';
 import BoundingBoxOverlay from './components/BoundingBoxOverlay';
+import ConversationalMode from './components/ConversationalMode';
 
 // Use environment variable or default to same host on port 8000
 const API_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
 
 function App() {
+  const [interfaceMode, setInterfaceMode] = useState('structured'); // 'structured' or 'conversational'
   const [selectedMode, setSelectedMode] = useState('technical_drawing');
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null); // Store file for conversational mode
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [showBoundingBoxes, setShowBoundingBoxes] = useState(true);
 
   const handleImageUpload = async (file) => {
+    // Store the file for conversational mode
+    setUploadedFile(file);
+
     // For images, create object URL for preview. For PDFs, set null (will show message)
     if (file.type.startsWith('image/')) {
       setUploadedImage(URL.createObjectURL(file));
@@ -24,7 +30,14 @@ function App() {
     }
     setResults(null);
     setError(null);
-    setIsProcessing(true);
+
+    // Only auto-process in structured mode
+    if (interfaceMode === 'structured') {
+      setIsProcessing(true);
+    } else {
+      // In conversational mode, just upload without processing
+      return;
+    }
 
     try {
       const formData = new FormData();
@@ -71,14 +84,40 @@ function App() {
           </p>
         </div>
 
-        {/* Mode Selector */}
-        <div className="mb-6">
-          <ModeSelector
-            selectedMode={selectedMode}
-            onModeChange={setSelectedMode}
-            disabled={isProcessing}
-          />
+        {/* Interface Mode Toggle */}
+        <div className="mb-6 flex justify-center gap-2">
+          <button
+            onClick={() => setInterfaceMode('structured')}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              interfaceMode === 'structured'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'bg-white/10 text-blue-200 hover:bg-white/20'
+            }`}
+          >
+            📊 Structured OCR
+          </button>
+          <button
+            onClick={() => setInterfaceMode('conversational')}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              interfaceMode === 'conversational'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'bg-white/10 text-blue-200 hover:bg-white/20'
+            }`}
+          >
+            💬 Conversational
+          </button>
         </div>
+
+        {/* Mode Selector - Only show in structured mode */}
+        {interfaceMode === 'structured' && (
+          <div className="mb-6">
+            <ModeSelector
+              selectedMode={selectedMode}
+              onModeChange={setSelectedMode}
+              disabled={isProcessing}
+            />
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -152,13 +191,23 @@ function App() {
             )}
           </div>
 
-          {/* Right Column - Results */}
+          {/* Right Column - Results or Conversational */}
           <div>
-            {results && (
-              <ResultsDisplay
-                results={results}
-                mode={selectedMode}
+            {interfaceMode === 'conversational' ? (
+              <ConversationalMode
+                imageFile={uploadedFile}
+                onResults={setResults}
+                isProcessing={isProcessing}
+                setIsProcessing={setIsProcessing}
+                apiUrl={API_URL}
               />
+            ) : (
+              results && (
+                <ResultsDisplay
+                  results={results}
+                  mode={selectedMode}
+                />
+              )
             )}
           </div>
         </div>
