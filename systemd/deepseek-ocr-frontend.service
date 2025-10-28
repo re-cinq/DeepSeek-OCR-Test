@@ -1,0 +1,17 @@
+[Unit]
+Description=DeepSeek OCR Frontend (Vite Dev Server)
+After=network.target deepseek-ocr-backend.service
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/home/YOUR_USERNAME/DeepSeek-OCR-Test/frontend
+Environment="PATH=/home/YOUR_USERNAME/.nvm/versions/node/v20.18.1/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/YOUR_USERNAME/.nvm/versions/node/v20.18.1/bin/npm run dev -- --host 0.0.0.0
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/deepseek-ocr-frontend.log
+StandardError=append:/var/log/deepseek-ocr-frontend.log
+
+[Install]
+WantedBy=multi-user.target

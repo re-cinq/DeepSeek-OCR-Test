@@ -1,0 +1,18 @@
+[Unit]
+Description=DeepSeek OCR Backend (Qwen3-VL with vLLM)
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/home/YOUR_USERNAME/DeepSeek-OCR-Test/backend
+Environment="VLLM_USE_V1=1"
+Environment="PATH=/home/YOUR_USERNAME/DeepSeek-OCR-Test/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/YOUR_USERNAME/DeepSeek-OCR-Test/venv/bin/python main.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/deepseek-ocr-backend.log
+StandardError=append:/var/log/deepseek-ocr-backend.log
+
+[Install]
+WantedBy=multi-user.target
