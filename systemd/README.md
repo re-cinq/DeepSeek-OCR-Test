@@ -83,9 +83,24 @@ sudo systemctl disable deepseek-ocr-backend
 sudo systemctl disable deepseek-ocr-frontend
 ```
 
-## Alternative: Screen/tmux Method
+## Alternative: Screen Method (Recommended for Conda Environments)
 
-If you don't have sudo access or prefer not to use systemd, you can use `screen` or `tmux`:
+**This is the easiest method if you're using conda instead of venv!**
+
+We provide automated scripts:
+
+```bash
+# Start both services in background
+./start_all_background.sh
+
+# Check status
+./status_background.sh
+
+# Stop all services
+./stop_all_background.sh
+```
+
+### Manual screen usage:
 
 ### Using screen:
 
