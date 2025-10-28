@@ -16,7 +16,7 @@ screen -X -S deepseek-frontend quit 2>/dev/null
 
 echo "📡 Starting Backend in screen session 'deepseek-backend'..."
 cd ~/DeepSeek-OCR-Test/backend
-screen -dmS deepseek-backend bash -c "source ~/.bashrc && conda activate deepseek-ocr && ./start_backend.sh"
+screen -dmS deepseek-backend bash -c "./start_backend_screen.sh; echo 'Backend exited. Press Enter to close.'; read"
 
 echo "🎨 Starting Frontend in screen session 'deepseek-frontend'..."
 cd ~/DeepSeek-OCR-Test/frontend
