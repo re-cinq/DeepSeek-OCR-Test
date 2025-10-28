@@ -2,14 +2,11 @@
 
 A conversational AI system for analyzing technical drawings, powered by **Qwen3-VL-8B-Instruct** with vLLM.
 
-![](assets/logo.svg)
-
 ## 🌟 Features
 
 - **Conversational Q&A**: Ask questions about technical drawings in natural language
 - **Instant Upload**: Upload once, ask multiple questions without re-uploading
 - **View Detection**: Automatically detect and highlight different views (front, side, top, sections)
-- **Background Processing**: View detection runs in background - start chatting immediately
 - **Bounding Box Visualization**: See detected elements highlighted on the drawing
 - **Fast Inference**: Optimized with flash-attention and vLLM
 - **German & English**: Supports both languages
@@ -19,7 +16,7 @@ A conversational AI system for analyzing technical drawings, powered by **Qwen3-
 ### Prerequisites
 
 - Python 3.12+
-- Node.js 18+ (for frontend)
+- Node.js 20+ (for frontend)
 - CUDA 12.0+ with 48GB+ VRAM (for GPU acceleration)
 - Conda or venv
 
@@ -56,39 +53,6 @@ npm run dev
 
 Frontend will be available at `http://localhost:5173`
 
-## 📖 Usage
-
-### Upload & Chat Workflow
-
-1. **Upload drawing** - Drag & drop or click to upload (image or PDF)
-2. **Wait < 1 second** - Upload completes instantly
-3. **Start asking questions** - Chat immediately, no waiting!
-4. **Bounding boxes appear** - View detection completes in background (5-10s)
-
-### Example Questions
-
-**German:**
-- "Was ist der Außendurchmesser?"
-- "Liste alle Maße mit Toleranzen auf"
-- "Was steht in der Stückliste?"
-- "Zeige mir alle Ansichten (Views) in dieser Zeichnung"
-
-**English:**
-- "What is the outer diameter?"
-- "List all dimensions with tolerances"
-- "What's in the bill of materials?"
-- "Show me all views in this drawing"
-
-### Quick Access Questions
-
-The interface provides predefined questions for common queries:
-- Dimensions and tolerances
-- Part numbers
-- Material specifications
-- BOM (Bill of Materials)
-- Scale
-- View detection
-
 ## 🏗️ Architecture
 
 ```
@@ -120,9 +84,9 @@ def __init__(self, model_path: str = "Qwen/Qwen3-VL-8B-Instruct"):
 ```
 
 Alternative models:
-- `Qwen/Qwen3-VL-8B-Thinking` - Shows reasoning (verbose)
+- `Qwen/Qwen3-VL-8B-Thinking` - Shows reasoning (verbose with mixed results)
 - `Qwen/Qwen3-VL-4B-Instruct` - Smaller, faster
-- `Qwen/Qwen3-VL-30B-A3B-Instruct` - Larger, more capable (needs more VRAM)
+- `Qwen/Qwen3-VL-30B-A3B-Instruct` - Larger, more capable (needs more VRAM at least 100GB)
 
 ### Performance Tuning
 
@@ -139,46 +103,6 @@ max_tokens=512   # Lower = shorter answers
 gpu_memory_utilization=0.90  # Use 90% of GPU memory
 ```
 
-**Flash-Attention:**
-```bash
-# Install for 20-30% speedup:
-cd backend
-./fix_flash_attn.sh
-```
-
-## 📁 Project Structure
-
-```
-.
-├── backend/
-│   ├── main.py                    # FastAPI application
-│   ├── qwen_vision_service.py     # Vision model service
-│   ├── models.py                  # Data models
-│   ├── start_backend.sh           # Startup script
-│   ├── fix_flash_attn.sh          # Flash-attn installer
-│   ├── requirements_qwen.txt      # Python dependencies
-│   ├── README.md                  # Backend docs
-│   ├── SETUP_QWEN.md              # Setup guide
-│   └── FLASH_ATTN_FIX.md          # Flash-attn troubleshooting
-│
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx                # Main app component
-│   │   ├── components/
-│   │   │   ├── ConversationalMode.jsx
-│   │   │   ├── BoundingBoxOverlay.jsx
-│   │   │   ├── ImageUpload.jsx
-│   │   │   └── ...
-│   │   └── main.jsx
-│   ├── package.json               # NPM dependencies
-│   └── README.md                  # Frontend docs
-│
-├── VIEW_DETECTION.md              # View detection feature docs
-├── requirements.txt               # Root dependencies
-├── README.md                      # This file
-└── LICENSE
-```
-
 ## 🎯 Key Features Deep Dive
 
 ### 1. View Detection
@@ -193,9 +117,7 @@ See [VIEW_DETECTION.md](VIEW_DETECTION.md) for details.
 
 ### 2. Background Processing
 
-Upload → Chat immediately → Bounding boxes appear automatically
-
-No more waiting for processing before you can ask questions!
+Upload → Chat → Bounding boxes appear automatically
 
 ### 3. Grounding Support
 
@@ -209,13 +131,6 @@ The system can return bounding box coordinates for detected elements in JSON for
 
 Grounding is automatically enabled for questions containing keywords like:
 - ansicht, view, zeige, show, wo ist, finde
-
-### 4. Session Management
-
-- Upload once, ask multiple questions
-- 24-hour session expiry
-- Automatic cleanup of expired sessions
-- Sessions stored in `/tmp/deepseek_ocr_sessions/`
 
 ## 🔍 API Endpoints
 
@@ -323,29 +238,3 @@ With flash-attention:
 - 20-30% faster inference
 - Lower memory usage
 - Better throughput
-
-## 🤝 Contributing
-
-This is a private project. For issues or suggestions, contact the maintainers.
-
-## 📄 License
-
-See [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Qwen Team** - For the excellent Qwen3-VL models
-- **vLLM Team** - For the fast inference engine
-- **DeepSeek AI** - Original DeepSeek-OCR research (paper reference)
-
-## 📚 Additional Documentation
-
-- [Backend Setup Guide](backend/SETUP_QWEN.md)
-- [Backend API Documentation](backend/README.md)
-- [View Detection Feature](VIEW_DETECTION.md)
-- [Flash-Attention Fix](backend/FLASH_ATTN_FIX.md)
-- [Frontend Documentation](frontend/README.md)
-
----
-
-**Note:** This system has been migrated from DeepSeek-OCR to Qwen3-VL for better conversational capabilities and reasoning. The original DeepSeek-OCR code has been archived.
